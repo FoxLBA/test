@@ -11,14 +11,14 @@ clean:
 	for d in $(TARGET_DIRS); do make -C $$d clean; done
 
 
-serverput sp:
+put p:
 	rsync -rchh --delete-after --progress . $(SERVER_PATH)/
 
-serverget sg:
+get g:
 	rsync -rchh --delete-after --progress $(SERVER_PATH)/ .
 
-serverdryput sdp:
+dryput dp:
 	rsync -rchhn --delete-after --progress . $(SERVER_PATH)/
 
-serverdryget sdg:
+dryget dg:
 	rsync -rchhn --delete-after --progress $(SERVER_PATH)/ .
