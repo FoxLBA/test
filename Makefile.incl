@@ -1,0 +1,32 @@
+ARCH = 			$(shell arch)
+USER = 			$(shell whoami)
+
+CXX = 			g++
+CXXFLAGS = 		-pthread -Wall
+
+DEPS_DIR = 		$(TOP_BUILD_DIR)/deps
+INCLUDES_DIR = 	$(DEPS_DIR)/headers
+LIBS_DIR = 		$(DEPS_DIR)/libs/$(ARCH)
+
+INCLUDES = 		-I $(INCLUDES_DIR) \
+
+LIBS =			-L $(LIBS_DIR) \
+				-lsched \
+				-lboinc_crypt \
+				-lboinc_api \
+				-lboinc \
+
+
+ifeq ($(USER), frosty)
+    DROPBOX_DIR = /media/data/Dropbox/Coursach
+endif
+
+ifeq ($(USER), boincadm)
+    DROPBOX_DIR = /media/data/Dropbox/Coursach
+endif
+
+ifeq ($(USER), blood13)
+    DROPBOX_DIR = ~/Dropbox/Coursach
+endif
+
+SERVER_PATH = boincadm@172.20.175.53:boinc
