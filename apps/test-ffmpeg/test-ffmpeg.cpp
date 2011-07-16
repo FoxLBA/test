@@ -31,10 +31,6 @@ int main(int argc, char **argv) {
     // resolve the output file name
     boinc_resolve_filename(OUTPUT_FILENAME, output_path, sizeof(output_path));
 
-    // copy
-//    sprintf(buf, "cp %s %s_copy.avi", input_path, input_path);
-//    system(buf);
-
     // наложение фильтра    ffmpeg -vf drawbox=400:400:250:250:red -i %s %s_copy.avi
     sprintf(buf, "mencoder -vf rectangle=400:400:250:250:red -o %s_copy.avi -oac copy -ovc lavc %s", input_path, input_path);
     fprintf(stderr, "command: %s\n", buf);
@@ -45,14 +41,7 @@ int main(int argc, char **argv) {
 
     rename(oldname, newname);
 
-//    sprintf(buf, "cp copy_%s %s", input_path, output_path);
-
 //    boinc_rename(tmp_name, output_path);
-
-    //copy in =>> out
-//    sprintf(buf, "cp %s %s", input_path, output_path);
-//    printf("copy: %s\n", buf);
-//    system(buf);
 
     //cleanup and exit
     boinc_fraction_done(1);
