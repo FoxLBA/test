@@ -95,10 +95,10 @@ int process_input(char *filename) {
     sprintf(oldname, "%s/%s", input_dir_string, input_filename);
     log_messages.printf(MSG_NORMAL, "oldname: %s\n", oldname);
 
-    if (!boinc_rename(oldname, newname))
-        log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
+    if (boinc_rename(oldname, newname))
+        log_messages.printf(MSG_CRITICAL, "Error renaming file %s\n", oldname);
     else
-        log_messages.printf(MSG_CRITICAL, "Error renaming file\n");
+        log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
 
     strcpy(wu.name, name);
     infiles[0] = name;
@@ -107,14 +107,29 @@ int process_input(char *filename) {
 }
 
 int process_background(char *filename) {
+    char path[255];
+    // Путь до ожидающего обработки файла
+    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
+    log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
 
-    return 0;
+    config.download_path(filename, path);
+    log_messages.printf(MSG_NORMAL, "Moving background to: %s\n", path);
+
+    infiles[1] = filename;
+    return boinc_copy(full_input_filename, path);
 }
 
 int process_config(char *filename) {
+    char path[255];
+    // Путь до ожидающего обработки файла
+    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
+    log_messages.printf(MSG_NORMAL, "Full config path: %s\n", full_input_filename);
 
-    return 0;
-}
+    config.download_path(filename, path);
+    log_messages.printf(MSG_NORMAL, "Moving config to: %s\n", path);
+
+    infiles[2] = filename;
+    return boinc_copy(full_input_filename, path);}
 
 // create one new job
 //
@@ -134,7 +149,6 @@ int make_job() {
     wu.max_error_results = REPLICATION_FACTOR*4;
     wu.max_total_results = REPLICATION_FACTOR*8;
     wu.max_success_results = REPLICATION_FACTOR*4;
-
 
     process_input(db_filename);
     process_background(db_background);
