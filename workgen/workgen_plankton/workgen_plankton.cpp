@@ -100,8 +100,8 @@ int make_job() {
     return create_work(
         wu,
         wu_template,
-        "templates/test_result",
-        config.project_path("templates/test_result"),
+        "templates/result",
+        config.project_path("templates/result"),
         infiles,
         1,
         config
@@ -178,16 +178,7 @@ void main_loop() {
 }
 
 void usage(char *name) {
-    fprintf(stderr, "This is an example BOINC work generator.\n"
-        "This work generator has the following properties\n"
-        "(you may need to change some or all of these):\n"
-        "- Runs as a daemon, and creates an unbounded supply of work.\n"
-        "  It attempts to maintain a \"cushion\" of 100 unsent job instances.\n"
-        "  (your app may not work this way; e.g. you might create work in batches)\n"
-        "- Creates work for the application \"uppercase\".\n"
-        "- Creates a new input file for each job;\n"
-        "  the file (and the workunit names) contain a timestamp\n"
-        "  and sequence number, so that they're unique.\n\n"
+    fprintf(stderr,
         "Usage: %s [OPTION]...\n\n"
         "Options:\n"
         "  [ -d X ]                    Sets debug level to X.\n"
@@ -238,7 +229,7 @@ int main(int argc, char** argv) {
         log_messages.printf(MSG_CRITICAL, "can't find app\n");
         exit(1);
     }
-    if (read_file_malloc(config.project_path("templates/test_wu"), wu_template)) {
+    if (read_file_malloc(config.project_path("templates/wu"), wu_template)) {
         log_messages.printf(MSG_CRITICAL, "can't read WU template\n");
         exit(1);
     }
