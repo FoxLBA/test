@@ -16,7 +16,7 @@
 
 #define REPLICATION_FACTOR 1
 #define SLEEP_INTERVAL 10
-#define INFILES_COUNT 2
+#define INFILES_COUNT 3
 
 // globals
 //
