@@ -49,6 +49,45 @@ char buff[255];
 char input_dir_string[255];
 char split[255];
 
+int split_input() {
+    log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
+    // Путь до ожидающего обработки файла
+    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, db_filename);
+    log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
+
+    // Формирование имени папки для нарезок
+    //
+    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);
+
+    log_messages.printf(MSG_NORMAL, "full_input_filename 13: %s\n", full_input_filename);
+    log_messages.printf(MSG_NORMAL, "input_dir_string 13: %s\n", input_dir_string);
+
+    // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
+    //
+    total_parts = 0;
+    sprintf(split, "%s/ffsplit.sh %s", config.project_path("bin"), full_input_filename);
+    log_messages.printf(MSG_NORMAL, "==SCRIPT STARTING==: %s\n", split);
+    // вызов скрипта
+    total_parts = system(split)>>8;
+
+    return 0;
+}
+
+int process_input(char *filename) {
+
+    return 0;
+}
+
+int process_background(char *filename) {
+
+    return 0;
+}
+
+int process_config(char *filename) {
+
+    return 0;
+}
+
 // create one new job
 //
 int make_job() {
@@ -114,7 +153,7 @@ void main_loop() {
     char buff[255];
     int retval;
     check_stop_daemons();
-    // Сканируем базу каждые 30 секунд
+    // Сканируем базу каждые SLEEP_INTERVAL секунд
     //
     while (1) {
         log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
@@ -136,25 +175,7 @@ void main_loop() {
             input_array[1] = db_background;
             input_array[2] = db_background;
 
-            log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
-            // Путь до ожидающего обработки файла
-            sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, db_filename);
-            log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
-
-            // Формирование имени папки для нарезок
-            //
-            strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);
-
-            log_messages.printf(MSG_NORMAL, "full_input_filename 13: %s\n", full_input_filename);
-            log_messages.printf(MSG_NORMAL, "input_dir_string 13: %s\n", input_dir_string);
-
-            // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
-            //
-            total_parts = 0;
-            sprintf(split, "%s/ffsplit.sh %s", config.project_path("bin"), full_input_filename);
-            log_messages.printf(MSG_NORMAL, "==SCRIPT STARTING==: %s\n", split);
-            // вызов скрипта
-            total_parts = system(split)>>8;
+            split_input();
 
             // Открыть папку для сканирования нарезок
             input_dir = dir_open(input_dir_string);
