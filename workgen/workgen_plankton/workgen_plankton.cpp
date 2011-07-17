@@ -21,6 +21,7 @@
 
 #define REPLICATION_FACTOR 1
 #define SLEEP_INTERVAL 10
+#define INFILES_COUNT 2
 
 // globals
 //
@@ -61,7 +62,6 @@ int make_job() {
     DB_WORKUNIT wu;
     char name[256], path[256];
     const char* infiles[1];
-    int rslt;
     char newname[255];
     char oldname[255];
     char basename[255];
@@ -74,18 +74,18 @@ int make_job() {
     sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
     config.download_path(name, path);
     sprintf(newname, "%s", path);
-    log_messages.printf(MSG_NORMAL, "newname: %s\n", newname);
 
+    log_messages.printf(MSG_NORMAL, "newname: %s\n", newname);
     log_messages.printf(MSG_NORMAL, "oldname input_dir_string: %s\n", input_dir_string);
     log_messages.printf(MSG_NORMAL, "oldname input_filename: %s\n", input_filename);
 
     sprintf(oldname, "%s/%s", input_dir_string, input_filename);
     log_messages.printf(MSG_NORMAL, "oldname: %s\n", oldname);
-    rslt = rename(oldname, newname);
-    if ( rslt == 0 )
+
+    if (!boinc_rename(oldname, newname))
         log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
     else
-        log_messages.printf(MSG_NORMAL, "Error renaming file\n");
+        log_messages.printf(MSG_CRITICAL, "Error renaming file\n");
 
     // Fill in the job parameters
     //
@@ -112,7 +112,7 @@ int make_job() {
         "templates/result",
         config.project_path("templates/result"),
         infiles,
-        2,
+        INFILES_COUNT,
         config
     );
 }
@@ -233,7 +233,7 @@ int main(int argc, char** argv) {
         log_messages.printf(MSG_CRITICAL, "can't open db\n");
         exit(1);
     }
-    if (app.lookup("where name='test-ffmpeg'")) {
+    if (app.lookup("where name='test-ffmpeg'")) { //FIXME
         log_messages.printf(MSG_CRITICAL, "can't find app\n");
         exit(1);
     }
