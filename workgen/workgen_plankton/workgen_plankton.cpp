@@ -44,6 +44,8 @@ char *db_par1;
 char *db_par2;
 
 char *input_array[INFILES_COUNT];
+const char* infiles[INFILES_COUNT];
+DB_WORKUNIT wu;
 
 char buff[255];
 char input_dir_string[255];
@@ -68,32 +70,11 @@ int split_input() {
     sprintf(split, "%s/ffsplit.sh %s", config.project_path("bin"), full_input_filename);
     log_messages.printf(MSG_NORMAL, "==SCRIPT STARTING==: %s\n", split);
     // вызов скрипта
-    total_parts = system(split)>>8;
-
-    return 0;
+    return system(split)>>8;
 }
 
 int process_input(char *filename) {
-
-    return 0;
-}
-
-int process_background(char *filename) {
-
-    return 0;
-}
-
-int process_config(char *filename) {
-
-    return 0;
-}
-
-// create one new job
-//
-int make_job() {
-    DB_WORKUNIT wu;
     char name[255], path[255];
-    const char* infiles[INFILES_COUNT];
     char newname[255];
     char oldname[255];
     char basename[255];
@@ -119,11 +100,30 @@ int make_job() {
     else
         log_messages.printf(MSG_CRITICAL, "Error renaming file\n");
 
+    strcpy(wu.name, name);
+    infiles[0] = name;
+
+    return 0;
+}
+
+int process_background(char *filename) {
+
+    return 0;
+}
+
+int process_config(char *filename) {
+
+    return 0;
+}
+
+// create one new job
+//
+int make_job() {
+
     // Fill in the job parameters
     //
     wu.clear();
     wu.appid = app.id;
-    strcpy(wu.name, name);
     wu.rsc_fpops_est = 1e12;
     wu.rsc_fpops_bound = 1e14;
     wu.rsc_memory_bound = 1e8;
@@ -134,7 +134,11 @@ int make_job() {
     wu.max_error_results = REPLICATION_FACTOR*4;
     wu.max_total_results = REPLICATION_FACTOR*8;
     wu.max_success_results = REPLICATION_FACTOR*4;
-    infiles[0] = name;
+
+
+    process_input(db_filename);
+    process_background(db_background);
+    process_config(db_par1);
 
     // Register the job with BOINC
     //
@@ -150,7 +154,6 @@ int make_job() {
 }
 
 void main_loop() {
-    char buff[255];
     int retval;
     check_stop_daemons();
     // Сканируем базу каждые SLEEP_INTERVAL секунд
@@ -175,7 +178,7 @@ void main_loop() {
             input_array[1] = db_background;
             input_array[2] = db_background;
 
-            split_input();
+            total_parts = split_input();
 
             // Открыть папку для сканирования нарезок
             input_dir = dir_open(input_dir_string);
