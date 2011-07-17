@@ -43,6 +43,8 @@ char *db_background;
 char *db_par1;
 char *db_par2;
 
+char *input_array[INFILES_COUNT];
+
 char buff[255];
 char input_dir_string[255];
 char split[255];
@@ -52,7 +54,7 @@ char split[255];
 int make_job() {
     DB_WORKUNIT wu;
     char name[255], path[255];
-    const char* infiles[INFILES_COUNT-1];
+    const char* infiles[INFILES_COUNT];
     char newname[255];
     char oldname[255];
     char basename[255];
@@ -109,6 +111,7 @@ int make_job() {
 }
 
 void main_loop() {
+    char buff[255];
     int retval;
     check_stop_daemons();
     // Сканируем базу каждые 30 секунд
@@ -128,6 +131,11 @@ void main_loop() {
             db_background = row[3];
             db_par1 =       row[4];
             db_par2 =       row[5];
+
+            input_array[0] = db_filename;
+            input_array[1] = db_background;
+            input_array[2] = db_background;
+
             log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
             // Путь до ожидающего обработки файла
             sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, db_filename);
@@ -140,22 +148,18 @@ void main_loop() {
             log_messages.printf(MSG_NORMAL, "full_input_filename 13: %s\n", full_input_filename);
             log_messages.printf(MSG_NORMAL, "input_dir_string 13: %s\n", input_dir_string);
 
+            // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
+            //
             total_parts = 0;
             sprintf(split, "%s/ffsplit.sh %s", config.project_path("bin"), full_input_filename);
             log_messages.printf(MSG_NORMAL, "==SCRIPT STARTING==: %s\n", split);
-            // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
-            //
             // вызов скрипта
             total_parts = system(split)>>8;
 
-
-
-            current_part = 0;
-            timestamp = time(0);
-
             // Открыть папку для сканирования нарезок
             input_dir = dir_open(input_dir_string);
-
+            timestamp = time(0);
+            current_part = 0;
             while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
                 current_part++;
                 retval = make_job();
