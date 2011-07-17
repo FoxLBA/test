@@ -4,6 +4,7 @@ assimilator/assimilator_ffmpeg/test_assimilator_ffmpeg
 assimilator/assimilator_text/test_assimilator_text
 workgen/workgen_ffmpeg/test_workgen_ffmpeg
 workgen/workgen_text/test_workgen_text
+workgen/workgen_text/workgen_plankton
 
 
 .*
