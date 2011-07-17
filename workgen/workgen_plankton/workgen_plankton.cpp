@@ -119,8 +119,9 @@ int process_background(char *filename) {
 
 int process_config(char *par1, char *par2) {
     char path[255];
+    char filename[255];
     // Имя конфига
-    sprintf(filename, "%s_%s_%s.cfg", app.id, db_taskID, db_filename);
+    sprintf(filename, "%s_%s_%s.cfg", app.name, db_taskID, db_filename);
 
     // Путь до конфига
     config.download_path(filename, path);
