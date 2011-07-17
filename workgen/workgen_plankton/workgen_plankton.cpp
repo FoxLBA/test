@@ -117,17 +117,21 @@ int process_background(char *filename) {
     return boinc_copy(full_input_filename, path);
 }
 
-int process_config(char *filename) {
+int process_config(char *par1, char *par2) {
     char path[255];
-    // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
-    log_messages.printf(MSG_NORMAL, "Full config path: %s\n", full_input_filename);
+    // Имя конфига
+    sprintf(filename, "%s_%s_%s.cfg", app.id, db_taskID, db_filename);
 
+    // Путь до конфига
     config.download_path(filename, path);
-    log_messages.printf(MSG_NORMAL, "Moving config to: %s\n", path);
+    log_messages.printf(MSG_NORMAL, "Writing config to: %s\n", path);
+
+    // Здесь парсятся поля, открывается файл path и в него пишется текст конфига
+
+    //
 
     infiles[2] = filename;
-    return boinc_copy(full_input_filename, path);
+    return 0;
 }
 
 // create one new job
@@ -151,7 +155,7 @@ int make_job() {
 
     process_input(db_filename);
     process_background(db_background);
-    process_config(db_par1);
+    process_config(db_par1, db_par2);
 
     // Register the job with BOINC
     //
