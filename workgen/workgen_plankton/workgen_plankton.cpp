@@ -35,7 +35,6 @@ char full_input_filename[255];
 int timestamp;
 int current_part = 1;
 int total_parts = 0;
-int start_iteration;
 
 MYSQL *conn;
 MYSQL_RES *result;
@@ -49,10 +48,7 @@ char *db_background;
 char *db_par1;
 char *db_par2;
 
-int num_fields;
-int i;
 char buff[255];//10
-char * pch;
 char input_dir_string[255];
 char split[255];
 
@@ -61,7 +57,7 @@ char split[255];
 int make_job() {
     DB_WORKUNIT wu;
     char name[256], path[256];
-    const char* infiles[1];
+    const char* infiles[INFILES_COUNT];
     char newname[255];
     char oldname[255];
     char basename[255];
