@@ -1,8 +1,3 @@
-#include <unistd.h>
-#include <cstdlib>
-#include <string>
-#include <cstring>
-
 #include "boinc_db.h"
 #include "error_numbers.h"
 #include "backend_lib.h"
@@ -33,7 +28,7 @@ char input_filename[255];
 char full_input_filename[255];
 
 int timestamp;
-int current_part = 1;
+int current_part = 0;
 int total_parts = 0;
 
 MYSQL *conn;
@@ -48,7 +43,7 @@ char *db_background;
 char *db_par1;
 char *db_par2;
 
-char buff[255];//10
+char buff[255];
 char input_dir_string[255];
 char split[255];
 
@@ -56,8 +51,8 @@ char split[255];
 //
 int make_job() {
     DB_WORKUNIT wu;
-    char name[256], path[256];
-    const char* infiles[INFILES_COUNT];
+    char name[255], path[255];
+    const char* infiles[INFILES_COUNT-1];
     char newname[255];
     char oldname[255];
     char basename[255];
@@ -145,13 +140,14 @@ void main_loop() {
             log_messages.printf(MSG_NORMAL, "full_input_filename 13: %s\n", full_input_filename);
             log_messages.printf(MSG_NORMAL, "input_dir_string 13: %s\n", input_dir_string);
 
-            total_parts=0;
+            total_parts = 0;
             sprintf(split, "%s/ffsplit.sh %s", config.project_path("bin"), full_input_filename);
             log_messages.printf(MSG_NORMAL, "==SCRIPT STARTING==: %s\n", split);
-            total_parts = system(split)>>8;
             // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
             //
             // вызов скрипта
+            total_parts = system(split)>>8;
+
 
 
             current_part = 0;
