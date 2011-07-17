@@ -12,8 +12,6 @@
 
 using std::vector;
 
-#define LOCKFILE "assimilator.out"
-#define PIDFILE  "assimilator.pid"
 #define SLEEP_INTERVAL 1
 
 #include <my_global.h>

@@ -3,11 +3,27 @@
 #include "filesys.h"
 #include "assimilator_plankton.h"
 
+using std::string;
+
+int process_output () {
+
+    return 0;
+}
+
+int process_background () {
+
+    return 0;
+}
+
+int process_log () {
+
+    return 0;
+}
+
 int rmerge(task_t task, vector<RESULT> results) {
     char output_filename[65535];
-    std::string result_file_name;
+    vector<string> result_file_names;
     char command[65535];
-//    output = fopen(config.project_path("dir/%s/%s", task.login, output_filename), "a+");
 
     // Формирование имени итогового выходного файла
     //
@@ -17,7 +33,7 @@ int rmerge(task_t task, vector<RESULT> results) {
     // Открывать результаты и доклеивать в итоговый файл
     //
     for (unsigned int i = 0; i < task.size; i++) {
-        get_output_file_path(results[i], result_file_name);
+        get_output_file_paths(results[i], result_file_names);
         sprintf(command, "%s %s", command, result_file_name.c_str());
     }
     log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
