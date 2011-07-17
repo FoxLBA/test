@@ -40,12 +40,21 @@ MYSQL *conn;
 MYSQL_RES *result;
 MYSQL_ROW row;
 MYSQL_FIELD *field;
+
+char *db_taskID;
+char *db_login;
+char *db_filename;
+char *db_background;
+char *db_par1;
+char *db_par2;
+
 int num_fields;
 int i;
 char buff[255];//10
 char * pch;
 char input_dir_string[255];
 char split[255];
+
 // create one new job
 //
 int make_job() {
@@ -61,8 +70,8 @@ int make_job() {
     // Чтение строки, формирование путей и имён
     //
     // Имя воркюнита
-    sscanf(row[2], "%[^.].%[^.]", basename, extension);
-    sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, row[0], row[1], basename, timestamp, current_part, total_parts, extension);
+    sscanf(db_filename, "%[^.].%[^.]", basename, extension);
+    sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
     config.download_path(name, path);
     sprintf(newname, "%s", path);
     log_messages.printf(MSG_NORMAL, "newname: %s\n", newname);
@@ -116,15 +125,21 @@ void main_loop() {
     while (1) {
         log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
         //запрос на все ожидающие файлы
-        mysql_query(conn, "select taskID, login, filename, par1, par2 from tasks inner join users on uid=id where status = '2'");
+        mysql_query(conn, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2'");
         result = mysql_store_result(conn);
         // Подсчёт количества столбцов. Пока не используется
         //
 //        num_fields = mysql_num_fields(result);
         while ((row = mysql_fetch_row(result))) {
-            log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", row[1], row[2]);
+            db_taskID =     row[0];
+            db_login =      row[1];
+            db_filename =   row[2];
+            db_background = row[3];
+            db_par1 =       row[4];
+            db_par2 =       row[5];
+            log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
             // Путь до ожидающего обработки файла
-            sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), row[1], row[2]);
+            sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, db_filename);
             log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
             // Формирование имени папки для нарезок
             //
@@ -163,8 +178,8 @@ void main_loop() {
 
             // Изменение статуса файла в БД планктон
             //
-            log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", row[0]);
-            sprintf(buff, "UPDATE tasks SET status=1 WHERE taskID=%s\n", row[0]);
+            log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
+            sprintf(buff, "UPDATE tasks SET status=1 WHERE taskID=%s\n", db_taskID);
             log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
             mysql_query(conn, buff);
 
