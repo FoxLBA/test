@@ -5,6 +5,20 @@
     <max_nbytes>5000000</max_nbytes>
     <url><UPLOAD_URL/></url>
 </file_info>
+<file_info>
+    <name><OUTFILE_0/></name>
+    <generated_locally/>
+    <upload_when_present/>
+    <max_nbytes>5000000</max_nbytes>
+    <url><UPLOAD_URL/></url>
+</file_info>
+<file_info>
+    <name><OUTFILE_0/></name>
+    <generated_locally/>
+    <upload_when_present/>
+    <max_nbytes>5000000</max_nbytes>
+    <url><UPLOAD_URL/></url>
+</file_info>
 <result>
     <file_ref>
         <file_name><OUTFILE_0/></file_name>
@@ -12,3 +26,18 @@
     <no_validate>1</no_validate>
     </file_ref>
 </result>
+<result>
+    <file_ref>
+        <file_name><OUTFILE_1/></file_name>
+        <open_name>out</open_name>
+    <no_validate>1</no_validate>
+    </file_ref>
+</result>
+<result>
+    <file_ref>
+        <file_name><OUTFILE_2/></file_name>
+        <open_name>out</open_name>
+    <no_validate>1</no_validate>
+    </file_ref>
+</result>
+
