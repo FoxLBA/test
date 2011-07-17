@@ -83,9 +83,9 @@ int make_job() {
     log_messages.printf(MSG_NORMAL, "oldname: %s\n", oldname);
     rslt = rename(oldname, newname);
     if ( rslt == 0 )
-        puts ( "File successfully renamed" );
+        log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
     else
-        perror( "Error renaming file" );
+        log_messages.printf(MSG_NORMAL, "Error renaming file\n");
 
     // Fill in the job parameters
     //
@@ -112,7 +112,7 @@ int make_job() {
         "templates/result",
         config.project_path("templates/result"),
         infiles,
-        1,
+        2,
         config
     );
 }
@@ -129,7 +129,7 @@ void main_loop() {
         result = mysql_store_result(conn);
         // Подсчёт количества столбцов. Пока не используется
         //
-//        num_fields = mysql_num_fields(result);
+        //num_fields = mysql_num_fields(result);
         while ((row = mysql_fetch_row(result))) {
             db_taskID =     row[0];
             db_login =      row[1];
@@ -141,13 +141,11 @@ void main_loop() {
             // Путь до ожидающего обработки файла
             sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, db_filename);
             log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
+
             // Формирование имени папки для нарезок
             //
-//            pch = strpbrk(full_input_filename, ".a");  // ДО ПЕРВОЙ ТОЧКИ
-//            while (pch != NULL) {
-                strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);
-//                pch = strpbrk(pch+1, ".a");
-//            }
+            strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);
+
             log_messages.printf(MSG_NORMAL, "full_input_filename 13: %s\n", full_input_filename);
             log_messages.printf(MSG_NORMAL, "input_dir_string 13: %s\n", input_dir_string);
 
@@ -160,13 +158,8 @@ void main_loop() {
             // вызов скрипта
 
 
-            current_part=0;
+            current_part = 0;
             timestamp = time(0);
-            // Посчитать сколько всего частей
-            //
-            //while (fscanf (input_file,"%d",&start_iteration) > 0) {
-            //    total_lines++;
-            //}
 
             // Открыть папку для сканирования нарезок
             input_dir = dir_open(input_dir_string);
@@ -252,12 +245,12 @@ int main(int argc, char** argv) {
     //инициализация подключения к базе данных
     conn = mysql_init(NULL);
     if (conn == NULL) {
-        printf("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
     //подключение к БД
     if (mysql_real_connect(conn, "localhost", "root", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
-        printf("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
 
