@@ -6,7 +6,7 @@
 
 struct task_t {
     char app_name[255];
-    unsigned int tid;
+    unsigned int id;
     char login[255];
     char name[255];
     char extension[255];

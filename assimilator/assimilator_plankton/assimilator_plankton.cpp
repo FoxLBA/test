@@ -46,11 +46,11 @@ int main_loop(APP& app) {
             }
         }
         // Заполнение полей текущего задания
-        sscanf(wu.name, "%[^_]_%d_%[^_]_%[^_]_%d_%*d_%d.%[^_]", task.app_name, &task.tid, task.login, task.name, &task.timestamp, &task.size, task.extension);
+        sscanf(wu.name, "%[^_]_%d_%[^_]_%[^_]_%d_%*d_%d.%[^_]", task.app_name, &task.id, task.login, task.name, &task.timestamp, &task.size, task.extension);
         // Создание списка результатов задания
         vector<RESULT> results;
         if (strlen(task.name) > 0) {
-            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%s_%s_%%\" and workunit.assimilate_state=%d", task.tid, task.login, task.name, ASSIMILATE_READY);
+            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%s_%s_%%\" and workunit.assimilate_state=%d", task.id, task.login, task.name, ASSIMILATE_READY);
             while (!result.enumerate(buf)) {
                     results.push_back(result);
             }
@@ -66,11 +66,11 @@ int main_loop(APP& app) {
                 // Обновление записей в базе
                 if (update_db) {
                     sprintf(buf, "assimilate_state=%d, transition_time=%d", ASSIMILATE_DONE, (int)time(0));
-                    sprintf(buf2, "appid=%d and assimilate_state=%d and name like \"%%_%d_%s_%s_%%\"", app.id, ASSIMILATE_READY, task.tid, task.login, task.name);
+                    sprintf(buf2, "appid=%d and assimilate_state=%d and name like \"%%_%d_%s_%s_%%\"", app.id, ASSIMILATE_READY, task.id, task.login, task.name);
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
                     // Обновление планктона
-                    sprintf(buff, "UPDATE tasks SET status=0 WHERE taskID=%d\n", task.tid);
+                    sprintf(buff, "UPDATE tasks SET status=0 WHERE taskID=%d\n", task.id);
                     mysql_query(conn, buff);
                 }
                 log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
