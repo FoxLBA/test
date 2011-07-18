@@ -129,7 +129,7 @@ int process_config(char *par1, char *par2) {
     log_messages.printf(MSG_NORMAL, "Writing config to: %s\n", path);
 
     // Здесь парсятся поля, открывается файл path и в него пишется текст конфига
-
+	// this will be source area
     //
 
     infiles[2] = filename;
