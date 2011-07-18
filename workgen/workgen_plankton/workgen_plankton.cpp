@@ -106,8 +106,9 @@ int process_input(char *filename) {
 
 int process_background(char *filename) {
     char path[255];
-    // Путь до ожидающего обработки файла
+    // Путь до бекграунда
     sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
+    sprintf(full_input_filename, "%s_%d", full_input_filename, current_part);
     log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
 
     config.download_path(filename, path);
@@ -121,7 +122,7 @@ int process_config(char *par1, char *par2) {
     char path[255];
     char filename[255];
     // Имя конфига
-    sprintf(filename, "%s_%s_%s.cfg", app.name, db_taskID, db_filename);
+    sprintf(filename, "%s_%s_%s_%d.cfg", app.name, db_taskID, db_filename, current_part);
 
     // Путь до конфига
     config.download_path(filename, path);
