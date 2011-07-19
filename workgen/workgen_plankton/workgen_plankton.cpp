@@ -119,6 +119,7 @@ int process_background(char *filename) {
 }
 
 int process_config(char *par1, char *par2) {
+	FILE *config;
     char path[255];
     char filename[255];
     // Имя конфига
