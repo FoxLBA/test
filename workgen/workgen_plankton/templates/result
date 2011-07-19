@@ -31,7 +31,7 @@
 
     <file_ref>
         <file_name><OUTFILE_1/></file_name>
-        <open_name>back</open_name>
+        <open_name>out_back</open_name>
         <no_validate>1</no_validate>
     </file_ref>
 
