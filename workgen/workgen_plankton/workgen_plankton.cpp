@@ -119,6 +119,8 @@ int process_background(char *filename) {
 }
 
 int process_config(char *par1, char *par2) {
+	FILE *configfile;
+	int i=0;
     char path[255];
     char filename[255];
     // Имя конфига
@@ -129,9 +131,25 @@ int process_config(char *par1, char *par2) {
     log_messages.printf(MSG_NORMAL, "Writing config to: %s\n", path);
 
     // Здесь парсятся поля, открывается файл path и в него пишется текст конфига
-
-    //
-
+	configfile = fopen(path, "w");
+	if (configfile==NULL) {
+		printf("config open error\n");
+	}
+	
+	// Парсинг полей
+	while (par1[i]!='\0' || par2[i]!='\0') {
+		if (par1[i]=='&') { 
+			par1[i]='\n';
+		}
+		if (par2[i]=='&') { 
+			par2[i]='\n';
+		}
+		i++;
+	}
+	
+	// Запись конфига. Возможно потребуется замена path на filename
+	fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, par1, par2);
+	fclose(configfile);
     infiles[2] = filename;
     return 0;
 }
@@ -156,8 +174,8 @@ int make_job() {
     wu.max_success_results = REPLICATION_FACTOR*4;
 
     process_input(db_filename);
+	process_config(db_par1, db_par2);
     process_background(db_background);
-    process_config(db_par1, db_par2);
 
     // Register the job with BOINC
     //
@@ -269,7 +287,7 @@ int main(int argc, char** argv) {
         log_messages.printf(MSG_CRITICAL, "can't open db\n");
         exit(1);
     }
-    if (app.lookup("where name='test-ffmpeg'")) { //FIXME
+    if (app.lookup("where name='workgen_plankton'")) { //FIXED app name
         log_messages.printf(MSG_CRITICAL, "can't find app\n");
         exit(1);
     }
