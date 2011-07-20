@@ -1,3 +1,0 @@
-Wlen=690.0
-Psize=1.562
-Imgsize=1024&X0=0
