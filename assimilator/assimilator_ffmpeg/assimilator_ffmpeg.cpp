@@ -8,7 +8,7 @@
 #include "sched_config.h"
 #include "sched_util.h"
 #include "sched_msgs.h"
-#include "test_assimilator.h"
+#include "assimilator.h"
 
 using std::vector;
 
