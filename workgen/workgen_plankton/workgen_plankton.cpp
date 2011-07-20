@@ -120,6 +120,7 @@ int process_background(char *filename) {
 
 int process_config(char *par1, char *par2) {
 	FILE *config;
+	int i=0;
     char path[255];
     char filename[255];
     // Имя конфига
@@ -130,8 +131,24 @@ int process_config(char *par1, char *par2) {
     log_messages.printf(MSG_NORMAL, "Writing config to: %s\n", path);
 
     // Здесь парсятся поля, открывается файл path и в него пишется текст конфига
-	//
-    //
+	config = fopen(path, "w");
+	{
+		printf("config open error\n");
+	}
+	
+	// Парсинг полей
+	while (par1[i]!='\0' || par2[i]!='\0') {
+		if (par1[i]=='&') { 
+			par1[i]='\n';
+		}
+		if (par2[i]=='&') { 
+			par2[i]='\n';
+		}
+		i++;
+	}
+	
+	// Запись конфига. Возможно потребуется замена path на filename
+	fprintf(config, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, par1, par2);
 
     infiles[2] = filename;
     return 0;

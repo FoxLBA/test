@@ -11,7 +11,7 @@ int main() {
 	char filename[255];
 	FILE *config;
 	printf("hello world!\n");
-	config = fopen("config.txt", "w");
+	config = fopen("config.cfg", "w");
 	if (config==NULL)
 	{
 		printf("error\n");
@@ -27,12 +27,6 @@ int main() {
 		}
 		i++;
 	}
-//	while (par2[i]!='\0') {
-//		if (par2[i]=='&') { 
-//			par2[i]='\n';
-//		}
-//		i++;
-//	}
-	//write to config.txt
+	//write to config.cfg
 	fprintf(config, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", filename, par1, par2);
 }
