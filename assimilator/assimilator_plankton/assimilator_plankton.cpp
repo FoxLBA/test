@@ -17,7 +17,11 @@ using std::vector;
 #include <my_global.h>
 #include <mysql.h>
 MYSQL *conn;
+MYSQL_RES *mysql_result;
+MYSQL_ROW row;
 char buff[255];
+char *rez;
+char frmt[10]="%H:%i:%S";
 
 bool update_db = true;
 int sleep_interval = SLEEP_INTERVAL;
@@ -27,6 +31,7 @@ char** g_argv;
 int main_loop(APP& app) {
     DB_WORKUNIT wu;
     DB_RESULT canonical_result, result;
+    APP_VERSION version;
     char buf[256];
     char buf2[256];
     int retval;
@@ -70,8 +75,14 @@ int main_loop(APP& app) {
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
                     // Обновление планктона
-                    sprintf(buff, "UPDATE tasks SET status=0 WHERE taskID=%d\n", task.id);
+                    sprintf(buff, "select startDate from tasks where taskId=%d", task.id);
                     mysql_query(conn, buff);
+                    mysql_result = mysql_store_result(conn);
+                    while ((row = mysql_fetch_row(mysql_result))) {
+                        rez = row[0];
+                    }
+                    sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
+                    mysql_query(conn, buff); 
                 }
                 log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
 
@@ -83,7 +94,11 @@ int main_loop(APP& app) {
         }
         sleep(SLEEP_INTERVAL);
     }
-}
+} 
+
+//int update_plankton(task.id, app.version_num) {     // FIXME
+       
+//}
 
 int main(int argc, char** argv) {
     //инициализация подключения к планктону
