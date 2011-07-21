@@ -20,4 +20,4 @@ remote:
 
 rinstall:
 	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do cp "$$d"/"$$d"_"$$v"/"$$d"_"$$v" ~/projects/test/bin/; done; done
-	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do cp "$$d"/"$$d"_"$$v"/"$$d"_"$$v" ~/projects/test/apps/; done; done
+	#for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do cp "$$d"/"$$d"_"$$v"/"$$d"_"$$v" ~/projects/test/apps/; done; done

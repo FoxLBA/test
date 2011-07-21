@@ -72,6 +72,7 @@ int split_input() {
 }
 
 int process_input(char *filename) {
+    log_messages.printf(MSG_NORMAL, "\nProcessing input: %s\n\n", filename);
     char name[255], path[255];
     char newname[255];
     char oldname[255];
@@ -105,20 +106,23 @@ int process_input(char *filename) {
 }
 
 int process_background(char *filename) {
+    log_messages.printf(MSG_NORMAL, "\nProcessing background: %s\n\n", filename);
     char path[255];
+    char outname[255];
     // Путь до бекграунда
     sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
-    sprintf(full_input_filename, "%s_%d", full_input_filename, current_part);
     log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
+    sprintf(outname, "%s_%d", filename, current_part);
 
-    config.download_path(filename, path);
-    log_messages.printf(MSG_NORMAL, "Moving background to: %s\n", path);
+    config.download_path(outname, path);
+    log_messages.printf(MSG_NORMAL, "Writing background to: %s\n", path);
 
-    infiles[1] = filename;
+    infiles[1] = outname;
     return boinc_copy(full_input_filename, path);
 }
 
 int process_config(char *par1, char *par2) {
+    log_messages.printf(MSG_NORMAL, "\nProcessing config: %s %s\n\n", par1, par2);
     FILE *configfile;
     int i=0;
     char path[255];
@@ -174,11 +178,12 @@ int make_job() {
     wu.max_success_results = REPLICATION_FACTOR*4;
 
     process_input(db_filename);
-    process_config(db_par1, db_par2);
     process_background(db_background);
+    process_config(db_par1, db_par2);
 
     // Register the job with BOINC
     //
+    log_messages.printf(MSG_NORMAL, "\n Creating work\n\n");
     return create_work(
         wu,
         wu_template,
@@ -221,6 +226,8 @@ void main_loop() {
             while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
                 current_part++;
                 retval = make_job();
+                if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create job: %d", retval); exit(1); }
+
             }
 
             // Изменение статуса файла в БД планктон
