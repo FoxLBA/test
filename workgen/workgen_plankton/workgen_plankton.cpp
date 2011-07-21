@@ -187,8 +187,8 @@ int make_job() {
     return create_work(
         wu,
         wu_template,
-        "templates/result",
-        config.project_path("templates/result"),
+        "templates/result.xml",
+        config.project_path("templates/result.xml"),
         infiles,
         INFILES_COUNT,
         config
@@ -293,7 +293,7 @@ int main(int argc, char** argv) {
         log_messages.printf(MSG_CRITICAL, "can't find app\n");
         exit(1);
     }
-    if (read_file_malloc(config.project_path("templates/wu"), wu_template)) {
+    if (read_file_malloc(config.project_path("templates/wu.xml"), wu_template)) {
         log_messages.printf(MSG_CRITICAL, "can't read WU template\n");
         exit(1);
     }
