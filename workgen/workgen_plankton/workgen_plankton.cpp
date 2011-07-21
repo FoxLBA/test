@@ -43,7 +43,7 @@ char *db_background;
 char *db_par1;
 char *db_par2;
 
-const char* infiles[INFILES_COUNT];
+char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
 char input_dir_string[255];
@@ -100,7 +100,11 @@ int process_input(char *filename) {
         log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
 
     strcpy(wu.name, name);
-    infiles[0] = name;
+    //infiles[0] = name;
+    strcpy(infiles[0], name);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
 
     return 0;
 }
@@ -117,7 +121,11 @@ int process_background(char *filename) {
     config.download_path(outname, path);
     log_messages.printf(MSG_NORMAL, "Writing background to: %s\n", path);
 
-    infiles[1] = outname;
+    //infiles[1] = outname;
+    strcpy(infiles[1], outname);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
     return boinc_copy(full_input_filename, path);
 }
 
@@ -154,7 +162,11 @@ int process_config(char *par1, char *par2) {
     // Запись конфига. Возможно потребуется замена path на filename
     fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, par1, par2);
     fclose(configfile);
-    infiles[2] = filename;
+    //infiles[2] = filename;
+    strcpy(infiles[2], filename);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
     return 0;
 }
 
@@ -189,7 +201,7 @@ int make_job() {
         wu_template,
         "templates/result.xml",
         config.project_path("templates/result.xml"),
-        infiles,
+        (const char**)infiles,
         INFILES_COUNT,
         config
     );
