@@ -246,7 +246,7 @@ void main_loop() {
             // Изменение статуса файла в БД планктон
             //
             log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
-            sprintf(buff, "UPDATE tasks SET status=1 WHERE taskID=%s\n", db_taskID);
+            sprintf(buff, "UPDATE tasks SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);
             log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
             mysql_query(conn, buff);
         }
