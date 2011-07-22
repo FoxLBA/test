@@ -29,15 +29,15 @@ int g_argc;
 char** g_argv;
 
 int update_plankton(task_t& task, APP_VERSION& version) {     // FIXME
-	sprintf(buff, "select startDate from tasks where taskId=%d", task.id);
-	mysql_query(conn, buff);
-	mysql_result = mysql_store_result(conn);
-	while ((row = mysql_fetch_row(mysql_result))) {
-		rez = row[0];
-	}
-	sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
-	mysql_query(conn, buff);
-	return(0);
+    sprintf(buff, "select startDate from tasks where taskId=%d", task.id);
+    mysql_query(conn, buff);
+    mysql_result = mysql_store_result(conn);
+    while ((row = mysql_fetch_row(mysql_result))) {
+        rez = row[0];
+    }
+    sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
+    mysql_query(conn, buff);
+    return(0);
 }
 
 int main_loop(APP& app) {
@@ -87,7 +87,7 @@ int main_loop(APP& app) {
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
                     // Обновление планктона
-                    update_plankton(task, version);    
+                    update_plankton(task, version);
                 }
                 log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
 
