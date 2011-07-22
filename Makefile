@@ -15,7 +15,7 @@ clean:
 	for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do make -C "$$d"-"$$v" clean; done; done
 
 remote:
-	rsync -rchh --delete-after --progress . $(SERVER_PATH):build/boinc/
+	rsync -rchh --delete-after --progress . $(SERVER_PATH):$(SERVER_REPO)/
 	ssh $(SERVER_PATH) "make -C build/boinc all rinstall"
 
 rinstall:
