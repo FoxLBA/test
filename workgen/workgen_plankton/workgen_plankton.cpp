@@ -195,13 +195,14 @@ int make_job() {
 
     // Register the job with BOINC
     //
+    const char* in[] = {infiles[0], infiles[1], infiles[2]};
     log_messages.printf(MSG_NORMAL, "\n Creating work\n\n");
     return create_work(
         wu,
         wu_template,
         "templates/result.xml",
         config.project_path("templates/result.xml"),
-        (const char**)infiles,
+        in,
         INFILES_COUNT,
         config
     );
