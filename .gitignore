@@ -1,5 +1,6 @@
 apps/test-ffmpeg/test-ffmpeg
 apps/test-text/test-text
+apps/test-plankton/test-plankton
 
 assimilator/assimilator_ffmpeg/test_assimilator_ffmpeg
 assimilator/assimilator_text/test_assimilator_text

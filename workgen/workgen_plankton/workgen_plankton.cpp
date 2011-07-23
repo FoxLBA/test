@@ -43,7 +43,7 @@ char *db_background;
 char *db_par1;
 char *db_par2;
 
-const char* infiles[INFILES_COUNT];
+char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
 char input_dir_string[255];
@@ -72,6 +72,7 @@ int split_input() {
 }
 
 int process_input(char *filename) {
+    log_messages.printf(MSG_NORMAL, "\nProcessing input: %s\n\n", filename);
     char name[255], path[255];
     char newname[255];
     char oldname[255];
@@ -99,26 +100,39 @@ int process_input(char *filename) {
         log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
 
     strcpy(wu.name, name);
-    infiles[0] = name;
+    //infiles[0] = name;
+    strcpy(infiles[0], name);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
 
     return 0;
 }
 
 int process_background(char *filename) {
+    log_messages.printf(MSG_NORMAL, "\nProcessing background: %s\n\n", filename);
     char path[255];
+    char outname[255];
     // Путь до бекграунда
     sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
-    sprintf(full_input_filename, "%s_%d", full_input_filename, current_part);
     log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
+    sprintf(outname, "%s_%d", filename, current_part);
 
-    config.download_path(filename, path);
-    log_messages.printf(MSG_NORMAL, "Moving background to: %s\n", path);
+    config.download_path(outname, path);
+    log_messages.printf(MSG_NORMAL, "Writing background to: %s\n", path);
 
-    infiles[1] = filename;
+    //infiles[1] = outname;
+    strcpy(infiles[1], outname);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
     return boinc_copy(full_input_filename, path);
 }
 
 int process_config(char *par1, char *par2) {
+    log_messages.printf(MSG_NORMAL, "\nProcessing config: %s %s\n\n", par1, par2);
+    FILE *configfile;
+    int i=0;
     char path[255];
     char filename[255];
     // Имя конфига
@@ -129,10 +143,30 @@ int process_config(char *par1, char *par2) {
     log_messages.printf(MSG_NORMAL, "Writing config to: %s\n", path);
 
     // Здесь парсятся поля, открывается файл path и в него пишется текст конфига
+    configfile = fopen(path, "w");
+    if (configfile==NULL) {
+        printf("config open error\n");
+    }
 
-    //
+    // Парсинг полей
+    while (par1[i]!='\0' || par2[i]!='\0') {
+        if (par1[i]=='&') {
+            par1[i]='\n';
+        }
+        if (par2[i]=='&') {
+            par2[i]='\n';
+        }
+        i++;
+    }
 
-    infiles[2] = filename;
+    // Запись конфига. Возможно потребуется замена path на filename
+    fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, par1, par2);
+    fclose(configfile);
+    //infiles[2] = filename;
+    strcpy(infiles[2], filename);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
     return 0;
 }
 
@@ -161,12 +195,14 @@ int make_job() {
 
     // Register the job with BOINC
     //
+    const char* in[] = {infiles[0], infiles[1], infiles[2]};
+    log_messages.printf(MSG_NORMAL, "\n Creating work\n\n");
     return create_work(
         wu,
         wu_template,
-        "templates/result",
-        config.project_path("templates/result"),
-        infiles,
+        "templates/result.xml",
+        config.project_path("templates/result.xml"),
+        in,
         INFILES_COUNT,
         config
     );
@@ -203,19 +239,16 @@ void main_loop() {
             while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
                 current_part++;
                 retval = make_job();
+                if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create job: %d", retval); exit(1); }
+
             }
 
             // Изменение статуса файла в БД планктон
             //
             log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
-            sprintf(buff, "UPDATE tasks SET status=1 WHERE taskID=%s\n", db_taskID);
+            sprintf(buff, "UPDATE tasks SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);
             log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
             mysql_query(conn, buff);
-
-            // Удаление исходного файла будет происходить только после изменения в БД
-            //
-            //log_messages.printf(MSG_NORMAL, "Processing complete, deleting file \"%s\"\n", input_filename);
-            //boinc_delete_file(full_input_filename);
         }
         sleep(SLEEP_INTERVAL);
     }
@@ -269,11 +302,11 @@ int main(int argc, char** argv) {
         log_messages.printf(MSG_CRITICAL, "can't open db\n");
         exit(1);
     }
-    if (app.lookup("where name='test-ffmpeg'")) { //FIXME
+    if (app.lookup("where name='test-plankton'")) {
         log_messages.printf(MSG_CRITICAL, "can't find app\n");
         exit(1);
     }
-    if (read_file_malloc(config.project_path("templates/wu"), wu_template)) {
+    if (read_file_malloc(config.project_path("templates/wu.xml"), wu_template)) {
         log_messages.printf(MSG_CRITICAL, "can't read WU template\n");
         exit(1);
     }

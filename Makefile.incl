@@ -16,4 +16,10 @@ LIBS =			-L $(LIBS_DIR) \
 				-lboinc_api \
 				-lboinc \
 
-SERVER_PATH = boincadm@172.20.175.53:boinc
+SERVER_PATH = boincadm@172.20.175.53
+
+ifeq ($(USER),frosty)
+    SERVER_REPO = build/boinc
+else
+    SERVER_REPO = b_repo
+endif

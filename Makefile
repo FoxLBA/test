@@ -2,23 +2,22 @@
 
 include Makefile.incl
 
-TARGET_DIRS = apps/test-text apps/test-ffmpeg assimilator/assimilator_text assimilator/assimilator_ffmpeg validator workgen/workgen_text workgen/workgen_ffmpeg
+TARGET_DAEMONS = assimilator workgen
+TARGET_APPS = apps/test
+TARGET_VERSIONS = text ffmpeg plankton
 
 all:
-	for d in $(TARGET_DIRS); do make -C $$d; done
+	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do make -C "$$d"/"$$d"_"$$v"; done; done
+	for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do make -C "$$d"-"$$v"; done; done
 
 clean:
-	for d in $(TARGET_DIRS); do make -C $$d clean; done
+	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do make -C "$$d"/"$$d"_"$$v" clean; done; done
+	for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do make -C "$$d"-"$$v" clean; done; done
 
+remote:
+	rsync -rchh --delete-after --progress . $(SERVER_PATH):$(SERVER_REPO)/
+	ssh $(SERVER_PATH) "make -C build/boinc all rinstall"
 
-put p:
-	rsync -rchh --delete-after --progress . $(SERVER_PATH)/
-
-get g:
-	rsync -rchh --delete-after --progress $(SERVER_PATH)/ .
-
-dryput dp:
-	rsync -rchhn --delete-after --progress . $(SERVER_PATH)/
-
-dryget dg:
-	rsync -rchhn --delete-after --progress $(SERVER_PATH)/ .
+rinstall:
+	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do cp "$$d"/"$$d"_"$$v"/"$$d"_"$$v" ~/projects/test/bin/; done; done
+	#for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do cp "$$d"/"$$d"_"$$v"/"$$d"_"$$v" ~/projects/test/apps/; done; done

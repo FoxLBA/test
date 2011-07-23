@@ -8,42 +8,22 @@
 #include "sched_config.h"
 #include "sched_util.h"
 #include "sched_msgs.h"
-#include "assimilator_plankton.h"
+#include "assimilator.h"
 
 using std::vector;
 
+#define LOCKFILE "assimilator.out"
+#define PIDFILE  "assimilator.pid"
 #define SLEEP_INTERVAL 1
-
-#include <my_global.h>
-#include <mysql.h>
-MYSQL *conn;
-MYSQL_RES *mysql_result;
-MYSQL_ROW row;
-char buff[255];
-char *rez;
-char frmt[10]="%H:%i:%S";
 
 bool update_db = true;
 int sleep_interval = SLEEP_INTERVAL;
 int g_argc;
 char** g_argv;
 
-int update_plankton(task_t& task, APP_VERSION& version) {     // FIXME
-    sprintf(buff, "select startDate from tasks where taskId=%d", task.id);
-    mysql_query(conn, buff);
-    mysql_result = mysql_store_result(conn);
-    while ((row = mysql_fetch_row(mysql_result))) {
-        rez = row[0];
-    }
-    sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
-    mysql_query(conn, buff);
-    return(0);
-}
-
 int main_loop(APP& app) {
     DB_WORKUNIT wu;
     DB_RESULT canonical_result, result;
-    APP_VERSION version;
     char buf[256];
     char buf2[256];
     int retval;
@@ -54,6 +34,7 @@ int main_loop(APP& app) {
         check_stop_daemons();
 
         sprintf(buf, "where appid=%d and assimilate_state=%d", app.id, ASSIMILATE_READY);
+
         // Заполнение полей текущего ворк юнита
         retval = wu.enumerate(buf);
         if (retval) {
@@ -63,11 +44,11 @@ int main_loop(APP& app) {
             }
         }
         // Заполнение полей текущего задания
-        sscanf(wu.name, "%[^_]_%d_%[^_]_%[^_]_%d_%*d_%d.%[^_]", task.app_name, &task.id, task.login, task.name, &task.timestamp, &task.size, task.extension);
+        sscanf(wu.name, "%[^_]_%[^_]_%d_%*d_%d", task.app_name, task.name, &task.timestamp, &task.size);
         // Создание списка результатов задания
         vector<RESULT> results;
         if (strlen(task.name) > 0) {
-            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%s_%s_%%\" and workunit.assimilate_state=%d", task.id, task.login, task.name, ASSIMILATE_READY);
+            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%s_%%\" and workunit.assimilate_state=%d", task.name, ASSIMILATE_READY);
             while (!result.enumerate(buf)) {
                     results.push_back(result);
             }
@@ -75,21 +56,19 @@ int main_loop(APP& app) {
 
         // Склеивание заданий
         if ((results.size() == task.size) && (task.size != 0)) {
-            log_messages.printf(MSG_NORMAL,"[%s_%s] Assimilating task\n", task.login, task.name);
+            log_messages.printf(MSG_NORMAL,"[%s] Assimilating task\n", task.name);
             retval = rmerge(task, results);
             if (retval) {
-                log_messages.printf(MSG_CRITICAL,"[%s_%s] Assimilation failed\n", task.login, task.name);
+                log_messages.printf(MSG_CRITICAL,"[%s] Assimilation failed\n", task.name);
             } else {
                 // Обновление записей в базе
                 if (update_db) {
                     sprintf(buf, "assimilate_state=%d, transition_time=%d", ASSIMILATE_DONE, (int)time(0));
-                    sprintf(buf2, "appid=%d and assimilate_state=%d and name like \"%%_%d_%s_%s_%%\"", app.id, ASSIMILATE_READY, task.id, task.login, task.name);
+                    sprintf(buf2, "appid=%d and assimilate_state=%d and name like \"%%_%s_%%\"", app.id, ASSIMILATE_READY, task.name);
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
-                    // Обновление планктона
-                    update_plankton(task, version);
                 }
-                log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
+                log_messages.printf(MSG_NORMAL,"[%s] Task assimilated\n", task.name);
 
                 //Очистка всех структур
                 wu.clear();
@@ -102,18 +81,6 @@ int main_loop(APP& app) {
 }
 
 int main(int argc, char** argv) {
-    //инициализация подключения к планктону
-    conn = mysql_init(NULL);
-    if (conn == NULL) {
-        printf("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
-        exit(1);
-    }
-    //подключение к БД планктон
-    if (mysql_real_connect(conn, "localhost", "root", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
-        printf("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
-        exit(1);
-    }
-
     int retval;
     DB_APP app;
     int i;

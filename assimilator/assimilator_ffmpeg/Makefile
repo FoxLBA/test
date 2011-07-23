@@ -11,15 +11,13 @@ LIBS-EXTRA = 		-lz \
 					-lssl \
 					-lmysqlclient \
 
-SOURCES = test_assimilator_ffmpeg.cpp
+SOURCES = assimilator_ffmpeg.cpp
 BINARIES = $(SOURCES:.cpp=)
 
 
 all: $(BINARIES)
 
-sample_assimilator: assimilator.o sample_assimilator.o validate_util.o
-
-test_assimilator_ffmpeg: test_assimilator_ffmpeg.o test_assimilator_handler.o validate_util.o
+assimilator_ffmpeg: assimilator_ffmpeg.o assimilator_handler.o validate_util.o
 
 %.o: %.cpp
 	$(CXX) -c $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) -o $@

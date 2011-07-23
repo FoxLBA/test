@@ -1,7 +1,7 @@
 #include "backend_lib.h"
 #include "validate_util.h"
 #include "filesys.h"
-#include "test_assimilator.h"
+#include "assimilator.h"
 
 int rmerge(task_t task, vector<RESULT> results) {
     char output_filename[65535];
