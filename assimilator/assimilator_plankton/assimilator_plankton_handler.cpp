@@ -33,9 +33,14 @@ int process_background(task_t task) {
     for (unsigned int i = 0; i < task.size; i++) {
         sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
         log_messages.printf(MSG_NORMAL, "Saving background [%d] to: %s\n", i, output_filename);
-        retval = boinc_rename(result_file_names[i][1].c_str(), output_filename);
+        retval = boinc_copy(result_file_names[i][1].c_str(), output_filename);
         if (retval) {
-            log_messages.printf(MSG_CRITICAL, "Error [%d] renaming background file %s to %s\n", retval, result_file_names[i][1].c_str(), output_filename);
+            log_messages.printf(MSG_CRITICAL, "Error [%d] copying background file %s to %s\n", retval, result_file_names[i][1].c_str(), output_filename);
+        } else {
+            retval = boinc_delete_file(result_file_names[i][1].c_str());
+            if (retval) {
+                log_messages.printf(MSG_CRITICAL, "Error [%d] deleting background file %s\n", retval, result_file_names[i][1].c_str());
+            }
         }
     }
     return 0;
@@ -49,9 +54,14 @@ int process_log(task_t task) {
     for (unsigned int i = 0; i < task.size; i++) {
         sprintf(output_filename, "%s/log_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
         log_messages.printf(MSG_NORMAL, "Saving log [%d] to: %s\n", i, output_filename);
-        retval = boinc_rename(result_file_names[i][2].c_str(), output_filename);
+        retval = boinc_copy(result_file_names[i][2].c_str(), output_filename);
         if (retval) {
-            log_messages.printf(MSG_CRITICAL, "Error [%d] renaming log file %s to %s\n", retval, result_file_names[i][2].c_str(), output_filename);
+            log_messages.printf(MSG_CRITICAL, "Error [%d] copying log file %s to %s\n", retval, result_file_names[i][2].c_str(), output_filename);
+        } else {
+            retval = boinc_delete_file(result_file_names[i][2].c_str());
+            if (retval) {
+                log_messages.printf(MSG_CRITICAL, "Error [%d] deleting log file %s\n", retval, result_file_names[i][2].c_str());
+            }
         }
     }
     return 0;

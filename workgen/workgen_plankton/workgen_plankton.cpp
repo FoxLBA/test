@@ -92,11 +92,15 @@ int process_input(char *filename) {
     log_messages.printf(MSG_NORMAL, "oldname: %s\n", oldname);
     log_messages.printf(MSG_NORMAL, "newname: %s\n", newname);
 
-    retval = boinc_rename(oldname, newname);
-    if (retval)
+    retval = boinc_copy(oldname, newname);
+    if (retval) {
         log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file %s to %s\n", retval, oldname, newname);
-    else
+    } else {
         log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
+        retval = boinc_delete_file(oldname);
+        if (retval)
+            log_messages.printf(MSG_CRITICAL, "Error [%d] removing file %s\n", retval, oldname);
+    }
 
     strcpy(wu.name, name);
     //infiles[0] = name;
