@@ -26,23 +26,33 @@ int process_output(task_t task) {
 }
 
 int process_background(task_t task) {
+    int retval;
     char output_filename[65535];
+
     // Переложить все бекграунды в папку к пользователю
     for (unsigned int i = 0; i < task.size; i++) {
         sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
         log_messages.printf(MSG_NORMAL, "Saving background [%d] to: %s\n", i, output_filename);
-        boinc_rename(result_file_names[i][1].c_str(), output_filename);
+        retval = boinc_rename(result_file_names[i][1].c_str(), output_filename);
+        if (retval) {
+            log_messages.printf(MSG_CRITICAL, "Error [%d] renaming background file %s to %s\n", retval, result_file_names[i][1].c_str(), output_filename);
+        }
     }
     return 0;
 }
 
 int process_log(task_t task) {
+    int retval;
     char output_filename[65535];
+
     // Переложить все логи в папку к пользователю
     for (unsigned int i = 0; i < task.size; i++) {
         sprintf(output_filename, "%s/log_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
         log_messages.printf(MSG_NORMAL, "Saving log [%d] to: %s\n", i, output_filename);
-        boinc_rename(result_file_names[i][2].c_str(), output_filename);
+        retval = boinc_rename(result_file_names[i][2].c_str(), output_filename);
+        if (retval) {
+            log_messages.printf(MSG_CRITICAL, "Error [%d] renaming log file %s to %s\n", retval, result_file_names[i][2].c_str(), output_filename);
+        }
     }
     return 0;
 }

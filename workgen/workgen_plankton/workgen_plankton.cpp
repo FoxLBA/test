@@ -60,8 +60,8 @@ int split_input() {
     //
     strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);
 
-    log_messages.printf(MSG_NORMAL, "full_input_filename 13: %s\n", full_input_filename);
-    log_messages.printf(MSG_NORMAL, "input_dir_string 13: %s\n", input_dir_string);
+    log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
+    log_messages.printf(MSG_NORMAL, "input_dir_string: %s\n", input_dir_string);
 
     // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
     //
@@ -78,6 +78,7 @@ int process_input(char *filename) {
     char oldname[255];
     char basename[255];
     char extension[255];
+    int retval;
 
     // Чтение строки, формирование путей и имён
     //
@@ -87,15 +88,13 @@ int process_input(char *filename) {
     config.download_path(name, path);
     sprintf(newname, "%s", path);
 
-    log_messages.printf(MSG_NORMAL, "newname: %s\n", newname);
-    log_messages.printf(MSG_NORMAL, "oldname input_dir_string: %s\n", input_dir_string);
-    log_messages.printf(MSG_NORMAL, "oldname input_filename: %s\n", input_filename);
-
     sprintf(oldname, "%s/%s", input_dir_string, input_filename);
     log_messages.printf(MSG_NORMAL, "oldname: %s\n", oldname);
+    log_messages.printf(MSG_NORMAL, "newname: %s\n", newname);
 
-    if (boinc_rename(oldname, newname))
-        log_messages.printf(MSG_CRITICAL, "Error renaming file %s\n", oldname);
+    retval = boinc_rename(oldname, newname);
+    if (retval)
+        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file %s to %s\n", retval, oldname, newname);
     else
         log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
 
@@ -239,8 +238,10 @@ void main_loop() {
             while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
                 current_part++;
                 retval = make_job();
-                if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create job: %d", retval); exit(1); }
-
+                if (retval) {
+                    log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
+                    exit(1);
+                }
             }
 
             // Изменение статуса файла в БД планктон
