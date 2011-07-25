@@ -37,7 +37,14 @@ int update_plankton(task_t& task, APP_VERSION& version) {     // FIXME
     }
     sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
     mysql_query(conn, buff);
-    return(0);
+    return 0;
+}
+
+int update_plankton_percent(int current, int total) {
+
+    sprintf(buff, "UPDATE tasks SET percent=%d\n", current*100/total);
+    mysql_query(conn, buff);
+    return 0;
 }
 
 int main_loop(APP& app) {
@@ -88,6 +95,7 @@ int main_loop(APP& app) {
                     boinc_db.commit_transaction();
                     // Обновление планктона
                     update_plankton(task, version);
+                    update_plankton_percent(results.size(), task.size);
                 }
                 log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
 
@@ -96,6 +104,8 @@ int main_loop(APP& app) {
                 memset(&task, 0, sizeof(task));
                 results.clear();
             }
+        } else {
+            update_plankton_percent(results.size(), task.size);
         }
         sleep(SLEEP_INTERVAL);
     }
