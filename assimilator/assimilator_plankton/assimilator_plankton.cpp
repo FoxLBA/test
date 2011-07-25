@@ -37,13 +37,16 @@ int update_plankton(task_t& task, APP_VERSION& version) {     // FIXME
     }
     sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
     mysql_query(conn, buff);
+    log_messages.printf(MSG_NORMAL, "Plankton updated\n");
     return 0;
 }
 
-int update_plankton_percent(int current, int total) {
-
-    sprintf(buff, "UPDATE tasks SET percent=%d\n", current*100/total);
+int update_plankton_percent(vector<RESULT> current, task_t& total) {
+    log_messages.printf(MSG_NORMAL, "current: %d\ntotal: %d\n", current.size(), total.size);
+    sprintf(buff, "UPDATE tasks SET percent=%d WHERE taskID=%d\n", current.size()*100/total.size, total.id);
+    log_messages.printf(MSG_NORMAL, "percent command: UPDATE tasks SET percent=%d WHERE taskID=%d\n", current.size()*100/total.size, total.id);
     mysql_query(conn, buff);
+    log_messages.printf(MSG_NORMAL, "Percent updated\n");
     return 0;
 }
 
@@ -94,8 +97,9 @@ int main_loop(APP& app) {
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
                     // Обновление планктона
+                    log_messages.printf(MSG_NORMAL, "update IF\n");
                     update_plankton(task, version);
-                    update_plankton_percent(results.size(), task.size);
+                    update_plankton_percent(results, task);	//(results.size(), task.size)
                 }
                 log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
 
@@ -105,7 +109,10 @@ int main_loop(APP& app) {
                 results.clear();
             }
         } else {
-            update_plankton_percent(results.size(), task.size);
+            if (results.size()) {
+                log_messages.printf(MSG_NORMAL, "update ELSE\n");
+                update_plankton_percent(results, task);
+            }
         }
         sleep(SLEEP_INTERVAL);
     }
