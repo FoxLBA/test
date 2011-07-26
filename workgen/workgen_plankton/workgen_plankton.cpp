@@ -185,8 +185,8 @@ int make_job() {
     //
     wu.clear();
     wu.appid = app.id;
-    wu.rsc_fpops_est = 1e12;
-    wu.rsc_fpops_bound = 1e14;
+    wu.rsc_fpops_est = 1e15;
+    wu.rsc_fpops_bound = 1e17;
     wu.rsc_memory_bound = 1e8;
     wu.rsc_disk_bound = 1e8;
     wu.delay_bound = 86400;
