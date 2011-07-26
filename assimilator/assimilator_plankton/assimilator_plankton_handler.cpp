@@ -36,11 +36,6 @@ int process_background(task_t task) {
         retval = boinc_copy(result_file_names[i][1].c_str(), output_filename);
         if (retval) {
             log_messages.printf(MSG_CRITICAL, "Error [%d] copying background file %s to %s\n", retval, result_file_names[i][1].c_str(), output_filename);
-        } else {
-            retval = boinc_delete_file(result_file_names[i][1].c_str());
-            if (retval) {
-                log_messages.printf(MSG_CRITICAL, "Error [%d] deleting background file %s\n", retval, result_file_names[i][1].c_str());
-            }
         }
     }
     return 0;
@@ -57,11 +52,6 @@ int process_log(task_t task) {
         retval = boinc_copy(result_file_names[i][2].c_str(), output_filename);
         if (retval) {
             log_messages.printf(MSG_CRITICAL, "Error [%d] copying log file %s to %s\n", retval, result_file_names[i][2].c_str(), output_filename);
-        } else {
-            retval = boinc_delete_file(result_file_names[i][2].c_str());
-            if (retval) {
-                log_messages.printf(MSG_CRITICAL, "Error [%d] deleting log file %s\n", retval, result_file_names[i][2].c_str());
-            }
         }
     }
     return 0;
