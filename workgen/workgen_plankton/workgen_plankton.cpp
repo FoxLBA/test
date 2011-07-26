@@ -251,6 +251,7 @@ void main_loop() {
                     exit(1);
                 }
             }
+            memset(input_dir_string, 0 , sizeof(input_dir_string));
 
             // Изменение статуса файла в БД планктон
             //
