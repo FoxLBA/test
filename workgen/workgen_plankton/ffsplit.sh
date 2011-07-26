@@ -26,7 +26,7 @@ prefix=0
 for offset in $(seq 0 10 $length); do
     if [ $offset -ne $length ]; then
         ((prefix++))
-        ffmpeg -i "$input" -t 10 -sameq -ss $offset "$path/$basename/$basename-$prefix.$extension"
+        ffmpeg -loglevel quiet -i "$input" -t 10 -sameq -ss $offset "$path/$basename/$basename-$prefix.$extension"
     fi
 done
 exit $prefix
