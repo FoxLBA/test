@@ -256,6 +256,11 @@ void main_loop() {
                     exit(1);
                 }
             }
+            retval = boinc_rmdir(input_dir_string);
+            if (retval) {
+                log_messages.printf(MSG_CRITICAL, "Can't remove directory %s: %d\n", input_dir_string, retval);
+                exit(1);
+            }
             memset(input_dir_string, 0 , sizeof(input_dir_string));
 
             // Изменение статуса файла в БД планктон
