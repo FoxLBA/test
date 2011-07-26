@@ -73,7 +73,7 @@ int split_input() {
 
 int process_input(char *filename) {
     log_messages.printf(MSG_NORMAL, "\nProcessing input: %s\n\n", filename);
-    char name[255], path[255];
+    char name[255];
     char newname[255];
     char oldname[255];
     char basename[255];
@@ -83,10 +83,9 @@ int process_input(char *filename) {
     // Чтение строки, формирование путей и имён
     //
     // Имя воркюнита
-    sscanf(db_filename, "%[^.].%[^.]", basename, extension);
+    sscanf(filename, "%[^.].%[^.]", basename, extension);
     sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
-    config.download_path(name, path);
-    sprintf(newname, "%s", path);
+    config.download_path(name, newname);
 
     sprintf(oldname, "%s/%s", input_dir_string, input_filename);
     log_messages.printf(MSG_NORMAL, "oldname: %s\n", oldname);
