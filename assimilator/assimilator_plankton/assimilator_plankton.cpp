@@ -41,10 +41,10 @@ int update_plankton(task_t& task, APP_VERSION& version) {     // FIXME
     return 0;
 }
 
-int update_plankton_percent(vector<RESULT> current, task_t& total) {
-    log_messages.printf(MSG_NORMAL, "[%s_%s] %d/%d\n", task.login, task.name, current.size(), total.size);
-    sprintf(buff, "UPDATE tasks SET percent=%d WHERE taskID=%d\n", current.size()*100/total.size, total.id);
-    log_messages.printf(MSG_NORMAL, "Percent update command: UPDATE tasks SET percent=%d WHERE taskID=%d\n", current.size()*100/total.size, total.id);
+int update_plankton_percent(vector<RESULT> result, task_t& task) {
+    log_messages.printf(MSG_NORMAL, "[%s_%s] %d/%d\n", task.login, task.name, (int)result.size(), task.size);
+    sprintf(buff, "UPDATE tasks SET percent=%d WHERE taskID=%d\n", (int)result.size() * 100 / task.size, task.id);
+    log_messages.printf(MSG_NORMAL, "Percent update command: UPDATE tasks SET percent=%d WHERE taskID=%d\n", (int)result.size() * 100 / task.size, task.id);
     mysql_query(conn, buff);
     return 0;
 }
