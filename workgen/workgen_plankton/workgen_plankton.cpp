@@ -201,6 +201,7 @@ int make_job() {
     // Register the job with BOINC
     //
     const char* in[] = {infiles[0], infiles[1], infiles[2]};
+    memset(infiles, 0, sizeof(infiles));
     log_messages.printf(MSG_NORMAL, "Creating work\n\n");
     return create_work(
         wu,
