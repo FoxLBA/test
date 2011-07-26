@@ -103,7 +103,7 @@ int process_input(char *filename) {
     }
 
     strcpy(wu.name, name);
-    //infiles[0] = name;
+
     strcpy(infiles[0], name);
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
@@ -116,15 +116,19 @@ int process_background(char *filename) {
     log_messages.printf(MSG_NORMAL, "\nProcessing background: %s\n\n", filename);
     char path[255];
     char outname[255];
+    char basename[255];
+    char extension[255];
+
+    sscanf(filename, "%[^.].%[^.]", basename, extension);
+
     // Путь до бекграунда
     sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
     log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
-    sprintf(outname, "%s_%d", filename, current_part);
+    sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
 
     config.download_path(outname, path);
     log_messages.printf(MSG_NORMAL, "Writing background to: %s\n", path);
 
-    //infiles[1] = outname;
     strcpy(infiles[1], outname);
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
@@ -139,7 +143,7 @@ int process_config(char *par1, char *par2) {
     char path[255];
     char filename[255];
     // Имя конфига
-    sprintf(filename, "%s_%s_%s_%d.cfg", app.name, db_taskID, db_filename, current_part);
+    sprintf(filename, "%s_%s_%s_config_%d_%d_%d.cfg", app.name, db_taskID, db_login, timestamp, current_part, total_parts);
 
     // Путь до конфига
     config.download_path(filename, path);
@@ -165,7 +169,7 @@ int process_config(char *par1, char *par2) {
     // Запись конфига. Возможно потребуется замена path на filename
     fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, par1, par2);
     fclose(configfile);
-    //infiles[2] = filename;
+
     strcpy(infiles[2], filename);
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
