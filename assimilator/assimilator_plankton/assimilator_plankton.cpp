@@ -42,11 +42,10 @@ int update_plankton(task_t& task, APP_VERSION& version) {     // FIXME
 }
 
 int update_plankton_percent(vector<RESULT> current, task_t& total) {
-    log_messages.printf(MSG_NORMAL, "current: %d\ntotal: %d\n", current.size(), total.size);
+    log_messages.printf(MSG_NORMAL, "[%s_%s] %d/%d\n", task.login, task.name, current.size(), total.size);
     sprintf(buff, "UPDATE tasks SET percent=%d WHERE taskID=%d\n", current.size()*100/total.size, total.id);
-    log_messages.printf(MSG_NORMAL, "percent command: UPDATE tasks SET percent=%d WHERE taskID=%d\n", current.size()*100/total.size, total.id);
+    log_messages.printf(MSG_NORMAL, "Percent update command: UPDATE tasks SET percent=%d WHERE taskID=%d\n", current.size()*100/total.size, total.id);
     mysql_query(conn, buff);
-    log_messages.printf(MSG_NORMAL, "Percent updated\n");
     return 0;
 }
 
@@ -79,7 +78,7 @@ int main_loop(APP& app) {
         if (strlen(task.name) > 0) {
             sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%s_%s_%%\" and workunit.assimilate_state=%d", task.id, task.login, task.name, ASSIMILATE_READY);
             while (!result.enumerate(buf)) {
-                    results.push_back(result);
+                results.push_back(result);
             }
         }
 
@@ -97,9 +96,8 @@ int main_loop(APP& app) {
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
                     // Обновление планктона
-                    log_messages.printf(MSG_NORMAL, "update IF\n");
                     update_plankton(task, version);
-                    update_plankton_percent(results, task);	//(results.size(), task.size)
+                    update_plankton_percent(results, task);
                 }
                 log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
 
@@ -110,7 +108,6 @@ int main_loop(APP& app) {
             }
         } else {
             if (results.size()) {
-                log_messages.printf(MSG_NORMAL, "update ELSE\n");
                 update_plankton_percent(results, task);
             }
         }
@@ -122,12 +119,12 @@ int main(int argc, char** argv) {
     //инициализация подключения к планктону
     conn = mysql_init(NULL);
     if (conn == NULL) {
-        printf("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
     //подключение к БД планктон
     if (mysql_real_connect(conn, "localhost", "root", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
-        printf("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
 
