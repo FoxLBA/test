@@ -23,9 +23,9 @@
 char* wu_template;
 DB_APP app;
 FILE *input_file;
-DIRREF input_dir;
-char input_filename[255];
+
 char full_input_filename[255];
+char input_dir_string[255];
 
 int timestamp;
 int current_part = 0;
@@ -46,9 +46,8 @@ char *db_par2;
 char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
-char input_dir_string[255];
 
-int split_input() {
+int split_input(char *db_login, char *db_filename) {
     char split[255];
 
     log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
@@ -58,7 +57,7 @@ int split_input() {
 
     // Формирование имени папки для нарезок
     //
-    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);
+    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
 
     log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
     log_messages.printf(MSG_NORMAL, "input_dir_string: %s\n", input_dir_string);
@@ -71,8 +70,8 @@ int split_input() {
     return system(split)>>8;
 }
 
-int process_input(char *filename) {
-    log_messages.printf(MSG_NORMAL, "\nProcessing input: %s\n\n", filename);
+int process_input(char *input_filename, char *db_filename) {
+    log_messages.printf(MSG_NORMAL, "Processing input: %s\n", input_filename);
     char name[255];
     char newname[255];
     char oldname[255];
@@ -83,7 +82,7 @@ int process_input(char *filename) {
     // Чтение строки, формирование путей и имён
     //
     // Имя воркюнита
-    sscanf(filename, "%[^.].%[^.]", basename, extension);
+    sscanf(db_filename, "%[^.].%[^.]", basename, extension);
     sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
     config.download_path(name, newname);
 
@@ -107,12 +106,13 @@ int process_input(char *filename) {
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
     }
+    log_messages.printf(MSG_NORMAL, "============\n");
 
     return 0;
 }
 
 int process_background(char *filename) {
-    log_messages.printf(MSG_NORMAL, "\nProcessing background: %s\n\n", filename);
+    log_messages.printf(MSG_NORMAL, "Processing background: %s\n", filename);
     char path[255];
     char outname[255];
     char basename[255];
@@ -132,11 +132,13 @@ int process_background(char *filename) {
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
     }
+    log_messages.printf(MSG_NORMAL, "============\n");
+
     return boinc_copy(full_input_filename, path);
 }
 
 int process_config(char *par1, char *par2) {
-    log_messages.printf(MSG_NORMAL, "\nProcessing config: %s %s\n\n", par1, par2);
+    log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", par1, par2);
     FILE *configfile;
     int i=0;
     char path[255];
@@ -173,6 +175,8 @@ int process_config(char *par1, char *par2) {
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
     }
+    log_messages.printf(MSG_NORMAL, "============\n");
+
     return 0;
 }
 
@@ -182,7 +186,6 @@ int make_job() {
 
     // Fill in the job parameters
     //
-    wu.clear();
     wu.appid = app.id;
     wu.rsc_fpops_est = 1e15;
     wu.rsc_fpops_bound = 1e17;
@@ -195,14 +198,10 @@ int make_job() {
     wu.max_total_results = REPLICATION_FACTOR*8;
     wu.max_success_results = REPLICATION_FACTOR*4;
 
-    process_input(db_filename);
-    process_background(db_background);
-    process_config(db_par1, db_par2);
-
     // Register the job with BOINC
     //
     const char* in[] = {infiles[0], infiles[1], infiles[2]};
-    log_messages.printf(MSG_NORMAL, "\n Creating work\n\n");
+    log_messages.printf(MSG_NORMAL, "Creating work\n\n");
     return create_work(
         wu,
         wu_template,
@@ -216,7 +215,9 @@ int make_job() {
 
 void main_loop() {
     char buff[255];
+    char input_filename[255];
     int retval;
+
     check_stop_daemons();
     // Сканируем базу каждые SLEEP_INTERVAL секунд
     //
@@ -236,14 +237,18 @@ void main_loop() {
             db_par1 =       row[4];
             db_par2 =       row[5];
 
-            total_parts = split_input();
+            total_parts = split_input(db_login, db_filename);
 
             // Открыть папку для сканирования нарезок
-            input_dir = dir_open(input_dir_string);
+            DIRREF input_dir = dir_open(input_dir_string);
             timestamp = time(0);
             current_part = 0;
             while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
                 current_part++;
+                wu.clear();
+                retval = process_input(input_filename, db_filename);
+                retval = process_background(db_background);
+                retval = process_config(db_par1, db_par2);
                 retval = make_job();
                 if (retval) {
                     log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
