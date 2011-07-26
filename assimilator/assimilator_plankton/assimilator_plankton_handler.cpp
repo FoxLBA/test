@@ -38,7 +38,7 @@ int process_background(task_t task) {
             log_messages.printf(MSG_CRITICAL, "Error [%d] copying background file %s to %s\n", retval, result_file_names[i][1].c_str(), output_filename);
         }
     }
-    return 0;
+    return retval;
 }
 
 int process_log(task_t task) {
@@ -54,10 +54,11 @@ int process_log(task_t task) {
             log_messages.printf(MSG_CRITICAL, "Error [%d] copying log file %s to %s\n", retval, result_file_names[i][2].c_str(), output_filename);
         }
     }
-    return 0;
+    return retval;
 }
 
 int rmerge(task_t task, vector<RESULT> results) {
+    int retval;
     vector<string> single;
 
     // Собрать имена всех файлов для всех результатов
@@ -71,10 +72,12 @@ int rmerge(task_t task, vector<RESULT> results) {
 
     // Обработать выходные файлы
     log_messages.printf(MSG_NORMAL, "Processing output\n");
-    process_output(task);
+    retval = process_output(task);
     log_messages.printf(MSG_NORMAL, "Processing background\n");
-    process_background(task);
+    retval = process_background(task);
     log_messages.printf(MSG_NORMAL, "Processing log\n");
-    process_log(task);
-    return 0;
+    retval = process_log(task);
+
+    result_file_names.clear();
+    return retval;
 }
