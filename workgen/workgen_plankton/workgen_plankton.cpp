@@ -13,10 +13,14 @@
 #include <my_global.h>
 #include <mysql.h>
 
+#include <list>
+
 
 #define REPLICATION_FACTOR 1
 #define SLEEP_INTERVAL 10
 #define INFILES_COUNT 3
+
+using namespace std;
 
 // globals
 //
@@ -47,7 +51,7 @@ char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
 
-int split_input(char *db_login, char *db_filename) {
+int split_input(const char *db_login, const char *db_filename) {
     char split[255];
 
     log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
@@ -70,7 +74,7 @@ int split_input(char *db_login, char *db_filename) {
     return system(split)>>8;
 }
 
-int process_input(char *input_filename, char *db_filename) {
+int process_input(const char *input_filename, const char *db_filename) {
     log_messages.printf(MSG_NORMAL, "Processing input: %s\n", input_filename);
     char name[255];
     char newname[255];
@@ -137,7 +141,7 @@ int process_background(char *filename) {
     return boinc_copy(full_input_filename, path);
 }
 
-int process_config(char *par1, char *par2) {
+int process_config(const char *par1, const char *par2) {
     log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", par1, par2);
     FILE *configfile;
     int i=0;
@@ -242,12 +246,21 @@ void main_loop() {
 
             // Открыть папку для сканирования нарезок
             DIRREF input_dir = dir_open(input_dir_string);
+            vector<string> input_vector;
+            while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
+                input_vector.push_back(input_filename);
+            }
+            sort (input_vector.begin(), input_vector.end());
+            for (unsigned int i = 0; i < input_vector.size(); i++) {
+                log_messages.printf(MSG_NORMAL, "input_vector[i]=%s\n", input_vector[i].c_str());
+            }
+
             timestamp = time(0);
             current_part = 0;
-            while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
+            for (unsigned int i = 0; i < input_vector.size(); i++) {
                 current_part++;
                 wu.clear();
-                retval = process_input(input_filename, db_filename);
+                retval = process_input(input_vector[i].c_str(), db_filename);
                 retval = process_background(db_background);
                 retval = process_config(db_par1, db_par2);
                 retval = make_job();
@@ -256,6 +269,7 @@ void main_loop() {
                     exit(1);
                 }
             }
+
             retval = boinc_rmdir(input_dir_string);
             if (retval) {
                 log_messages.printf(MSG_CRITICAL, "Can't remove directory %s: %d\n", input_dir_string, retval);
