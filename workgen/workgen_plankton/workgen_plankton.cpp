@@ -141,8 +141,12 @@ int process_background(char *filename) {
     return boinc_copy(full_input_filename, path);
 }
 
-int process_config(char *par1, char *par2) {
-    log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", par1, par2);
+int process_config(const char *par1, const char *par2) {
+    char in_par1[255];
+    char in_par2[255];
+    strcpy(in_par1, par1);
+    strcpy(in_par2, par2);
+    log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", in_par1, in_par2);
     FILE *configfile;
     int i=0;
     char path[255];
@@ -161,18 +165,18 @@ int process_config(char *par1, char *par2) {
     }
 
     // Парсинг полей
-    while (par1[i]!='\0' || par2[i]!='\0') {
-        if (par1[i]=='&') {
-            par1[i]='\n';
+    while (in_par1[i]!='\0' || in_par2[i]!='\0') {
+        if (in_par1[i]=='&') {
+            in_par1[i]='\n';
         }
-        if (par2[i]=='&') {
-            par2[i]='\n';
+        if (in_par2[i]=='&') {
+            in_par2[i]='\n';
         }
         i++;
     }
 
     // Запись конфига. Возможно потребуется замена path на filename
-    fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, par1, par2);
+    fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, in_par1, in_par2);
     fclose(configfile);
 
     strcpy(infiles[2], filename);
