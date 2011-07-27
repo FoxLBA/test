@@ -15,7 +15,7 @@ int process_output(task_t task) {
     //
     sprintf(output_filename, "%s/%s_%d_%d.%s", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, task.extension);
     log_messages.printf(MSG_NORMAL, "output_filename: %s\n", output_filename);
-    sprintf(command, "mencoder -oac copy -ovc copy -o %s", output_filename);
+    sprintf(command, "mencoder -msglevel all=1 -oac copy -ovc copy -o %s", output_filename);
     // Открывать результаты и доклеивать в итоговый файл
     //
     for (unsigned int i = 0; i < task.size; i++) {
@@ -32,7 +32,7 @@ int process_background(task_t task) {
     // Переложить все бекграунды в папку к пользователю
     for (unsigned int i = 0; i < task.size; i++) {
         sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
-        log_messages.printf(MSG_NORMAL, "Saving background [%d] to: %s\n", i, output_filename);
+        log_messages.printf(MSG_NORMAL, "Saving background [%d] to: %s\n", i+1, output_filename);
         retval = boinc_copy(result_file_names[i][1].c_str(), output_filename);
         if (retval) {
             log_messages.printf(MSG_CRITICAL, "Error [%d] copying background file %s to %s\n", retval, result_file_names[i][1].c_str(), output_filename);
@@ -48,7 +48,7 @@ int process_log(task_t task) {
     // Переложить все логи в папку к пользователю
     for (unsigned int i = 0; i < task.size; i++) {
         sprintf(output_filename, "%s/log_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
-        log_messages.printf(MSG_NORMAL, "Saving log [%d] to: %s\n", i, output_filename);
+        log_messages.printf(MSG_NORMAL, "Saving log [%d] to: %s\n", i+1, output_filename);
         retval = boinc_copy(result_file_names[i][2].c_str(), output_filename);
         if (retval) {
             log_messages.printf(MSG_CRITICAL, "Error [%d] copying log file %s to %s\n", retval, result_file_names[i][2].c_str(), output_filename);
