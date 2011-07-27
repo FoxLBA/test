@@ -205,7 +205,6 @@ int make_job() {
     // Register the job with BOINC
     //
     const char* in[] = {infiles[0], infiles[1], infiles[2]};
-    memset(infiles, 0, sizeof(infiles));
     log_messages.printf(MSG_NORMAL, "Creating work\n\n");
     return create_work(
         wu,
@@ -268,6 +267,7 @@ void main_loop() {
                     log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
                     exit(1);
                 }
+                memset(infiles, 0, sizeof(infiles));
             }
 
             retval = boinc_rmdir(input_dir_string);
