@@ -13,9 +13,6 @@
 #include <my_global.h>
 #include <mysql.h>
 
-#include <list>
-
-
 #define REPLICATION_FACTOR 1
 #define SLEEP_INTERVAL 10
 #define INFILES_COUNT 3
