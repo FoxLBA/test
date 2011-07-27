@@ -141,7 +141,7 @@ int process_background(char *filename) {
     return boinc_copy(full_input_filename, path);
 }
 
-int process_config(const char *par1, const char *par2) {
+int process_config(char *par1, char *par2) {
     log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", par1, par2);
     FILE *configfile;
     int i=0;
@@ -251,9 +251,6 @@ void main_loop() {
                 input_vector.push_back(input_filename);
             }
             sort (input_vector.begin(), input_vector.end());
-            for (unsigned int i = 0; i < input_vector.size(); i++) {
-                log_messages.printf(MSG_NORMAL, "input_vector[i]=%s\n", input_vector[i].c_str());
-            }
 
             timestamp = time(0);
             current_part = 0;
@@ -261,8 +258,11 @@ void main_loop() {
                 current_part++;
                 wu.clear();
                 retval = process_input(input_vector[i].c_str(), db_filename);
+                if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process input: %d\n", retval); }
                 retval = process_background(db_background);
+                if (retval) {log_messages.printf(MSG_CRITICAL, "Can't create process background: %d\n", retval); }
                 retval = process_config(db_par1, db_par2);
+                if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process config: %d\n", retval); }
                 retval = make_job();
                 if (retval) {
                     log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
