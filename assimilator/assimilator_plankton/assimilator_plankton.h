@@ -14,4 +14,4 @@ struct task_t {
     unsigned int size;
 };
 
-extern int rmerge( task_t task, vector<RESULT> results);
+extern int handle_result(task_t task, vector<RESULT> results);

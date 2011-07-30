@@ -57,7 +57,7 @@ int process_log(task_t task) {
     return retval;
 }
 
-int rmerge(task_t task, vector<RESULT> results) {
+int handle_result(task_t task, vector<RESULT> results) {
     int retval;
     vector<string> single;
 

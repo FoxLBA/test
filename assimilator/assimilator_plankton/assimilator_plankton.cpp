@@ -85,7 +85,7 @@ int main_loop(APP& app) {
         // Склеивание заданий
         if ((results.size() == task.size) && (task.size != 0)) {
             log_messages.printf(MSG_NORMAL,"[%s_%s] Assimilating task\n", task.login, task.name);
-            retval = rmerge(task, results);
+            retval = handle_result(task, results);
             if (retval) {
                 log_messages.printf(MSG_CRITICAL,"[%s_%s] Assimilation failed\n", task.login, task.name);
             } else {
