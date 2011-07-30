@@ -28,14 +28,14 @@ int sleep_interval = SLEEP_INTERVAL;
 int g_argc;
 char** g_argv;
 
-int update_plankton(task_t& task, APP_VERSION& version) {     // FIXME
+int update_plankton(task_t& task, APP_VERSION& app_version) {     // FIXME
     sprintf(buff, "select startDate from tasks where taskId=%d", task.id);
     mysql_query(conn, buff);
     mysql_result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(mysql_result))) {
         rez = row[0];
     }
-    sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
+    sprintf(buff, "UPDATE tasks SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, app_version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
     mysql_query(conn, buff);
     log_messages.printf(MSG_NORMAL, "Plankton updated\n");
     return 0;
@@ -52,7 +52,7 @@ int update_plankton_percent(vector<RESULT> result, task_t& task) {
 int main_loop(APP& app) {
     DB_WORKUNIT wu;
     DB_RESULT canonical_result, result;
-    APP_VERSION version;
+    DB_APP_VERSION app_version;     // http://boinc.berkeley.edu/doxygen/server/html/classDB__APP__VERSION.html
     char buf[256];
     char buf2[256];
     int retval;
@@ -96,7 +96,7 @@ int main_loop(APP& app) {
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
                     // Обновление планктона
-                    update_plankton(task, version);
+                    update_plankton(task, app_version);
                     update_plankton_percent(results, task);
                 }
                 log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
     }
 
     int retval;
-    DB_APP app;
+    DB_APP app;     // http://boinc.berkeley.edu/doxygen/server/html/classDB__APP.html
     int i;
     char buf[256];
 
