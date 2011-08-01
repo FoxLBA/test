@@ -34,6 +34,7 @@ int current_part = 0;
 int total_parts = 0;
 
 MYSQL *conn;
+MYSQL *downlevel;
 MYSQL_RES *result;
 MYSQL_ROW row;
 MYSQL_FIELD *field;
@@ -44,11 +45,9 @@ char *db_filename;
 char *db_background;
 char *db_par1;
 char *db_par2;
-int rez;
 
 char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
-
 
 int split_input(const char *db_login, const char *db_filename) {
     char split[255];
@@ -189,11 +188,13 @@ int process_config(const char *par1, const char *par2) {
 
 // create one new job
 //
-int make_job() {
-
+int make_job(char *db_taskID) {
+    int tid;
+    tid = atoi(db_taskID);
     // Fill in the job parameters
     //
     wu.appid = app.id;
+    wu.batch = tid;
     wu.rsc_fpops_est = 1e15;
     wu.rsc_fpops_bound = 1e17;
     wu.rsc_memory_bound = 1e8;
@@ -221,6 +222,7 @@ int make_job() {
 }
 
 int st1_count() {  //FIXME
+    int rez;
     log_messages.printf(MSG_NORMAL, "Counting STATUS=1 tasks...\n");
     mysql_query(conn, "select count(taskID) from tasks where status='1'");
     result = mysql_store_result(conn);
@@ -228,6 +230,25 @@ int st1_count() {  //FIXME
     rez = atoi(row[0]);
     log_messages.printf(MSG_NORMAL, "Find: %s\n", row[0]); 
     return rez;
+}
+
+int cancel_wu() {
+    char *c_task_id;
+    char buff[255];
+    log_messages.printf(MSG_NORMAL, "Trying to find tasks where STATUS=3 or DEL=1...\n");
+    mysql_query(conn, "select taskID from tasks where status=3 or del=1");
+    result = mysql_store_result(conn);
+    while ((row = mysql_fetch_row(result))) {
+        c_task_id = row[0];
+        // Ставится соответствие taskID и filename планктона воркюнитам из таблицы workunit
+        // в результате имеется начальный и конечный id
+        // ВАЖНО: id ву и результатов могут не совпадать!
+        sprintf(buff, "update result set server_state=5, outcome=5 where server_state=2 and batch=%s", c_task_id);
+        mysql_query(downlevel, buff);
+        sprintf(buff, "update workunit set error_mask=error_mask|16 where batch=%s", c_task_id);
+        mysql_query(downlevel, buff);
+    }
+    return 0;
 }
 
 void main_loop() {
@@ -240,6 +261,7 @@ void main_loop() {
     // Сканируем базу каждые SLEEP_INTERVAL секунд
     //
     while (1) {
+        cancel_wu();
         st1 = st1_count();
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
@@ -279,7 +301,7 @@ void main_loop() {
                     if (retval) {log_messages.printf(MSG_CRITICAL, "Can't create process background: %d\n", retval); }
                     retval = process_config(db_par1, db_par2);
                     if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process config: %d\n", retval); }
-                    retval = make_job();
+                    retval = make_job(db_taskID);
                     if (retval) {
                         log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
                         exit(1);
@@ -363,18 +385,29 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    //инициализация подключения к базе данных
+    // инициализация подключения к БД plankton
     conn = mysql_init(NULL);
     if (conn == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
-    //подключение к БД
+    // подключение к БД plankton
     if (mysql_real_connect(conn, "localhost", "root", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
-
+    // инициализация подключения к БД нижнего уровня
+    downlevel = mysql_init(NULL);
+    if (downlevel == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
+        exit(1);
+    }
+    // подключение к БД нижнего уровня
+    if (mysql_real_connect(downlevel, "localhost", "root", "password!stronk!", "boinc_test", 0, NULL, 0) == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
+        exit(1);
+    }
+    
     log_messages.printf(MSG_NORMAL, "Starting\n");
     main_loop();
 }
