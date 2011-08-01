@@ -16,6 +16,7 @@
 #define REPLICATION_FACTOR 1
 #define SLEEP_INTERVAL 10
 #define INFILES_COUNT 3
+#define MAX_TASKS 5
 
 using namespace std;
 
@@ -43,6 +44,7 @@ char *db_filename;
 char *db_background;
 char *db_par1;
 char *db_par2;
+int rez;
 
 char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
@@ -218,72 +220,87 @@ int make_job() {
     );
 }
 
+int st1_count() {  //FIXME
+    log_messages.printf(MSG_NORMAL, "Counting STATUS=1 tasks...\n");
+    mysql_query(conn, "select count(taskID) from tasks where status='1'");
+    result = mysql_store_result(conn);
+    row = mysql_fetch_row(result);
+    rez = atoi(row[0]);
+    log_messages.printf(MSG_NORMAL, "Find: %s\n", row[0]); 
+    return rez;
+}
+
 void main_loop() {
     char buff[255];
     char input_filename[255];
     int retval;
-
+    int st1;
+    
     check_stop_daemons();
     // Сканируем базу каждые SLEEP_INTERVAL секунд
     //
     while (1) {
-        log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
-        //запрос на все ожидающие файлы
-        mysql_query(conn, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2'");
-        result = mysql_store_result(conn);
-        // Подсчёт количества столбцов. Пока не используется
-        //
-        //num_fields = mysql_num_fields(result);
-        while ((row = mysql_fetch_row(result))) {
-            db_taskID =     row[0];
-            db_login =      row[1];
-            db_filename =   row[2];
-            db_background = row[3];
-            db_par1 =       row[4];
-            db_par2 =       row[5];
+        st1 = st1_count();
+        if (st1 < MAX_TASKS) {  //FIXME
+            log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
+            //запрос на все ожидающие файлы
+            sprintf(buff, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2' limit %d", MAX_TASKS-st1);
+            mysql_query(conn, buff);
+            result = mysql_store_result(conn);
+            // Подсчёт количества столбцов. Пока не используется
+            //
+            //num_fields = mysql_num_fields(result);
+            while ((row = mysql_fetch_row(result))) {
+                db_taskID =     row[0];
+                db_login =      row[1];
+                db_filename =   row[2];
+                db_background = row[3];
+                db_par1 =       row[4];
+                db_par2 =       row[5];
 
-            total_parts = split_input(db_login, db_filename);
+                total_parts = split_input(db_login, db_filename);
 
-            // Открыть папку для сканирования нарезок
-            DIRREF input_dir = dir_open(input_dir_string);
-            vector<string> input_vector;
-            while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
-                input_vector.push_back(input_filename);
-            }
-            sort (input_vector.begin(), input_vector.end());
+                // Открыть папку для сканирования нарезок
+                DIRREF input_dir = dir_open(input_dir_string);
+                vector<string> input_vector;
+                while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
+                    input_vector.push_back(input_filename);
+                }
+                sort (input_vector.begin(), input_vector.end());
 
-            timestamp = time(0);
-            current_part = 0;
-            for (unsigned int i = 0; i < input_vector.size(); i++) {
-                current_part++;
-                wu.clear();
-                retval = process_input(input_vector[i].c_str(), db_filename);
-                if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process input: %d\n", retval); }
-                retval = process_background(db_background);
-                if (retval) {log_messages.printf(MSG_CRITICAL, "Can't create process background: %d\n", retval); }
-                retval = process_config(db_par1, db_par2);
-                if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process config: %d\n", retval); }
-                retval = make_job();
+                timestamp = time(0);
+                current_part = 0;
+                for (unsigned int i = 0; i < input_vector.size(); i++) {
+                    current_part++;
+                    wu.clear();
+                    retval = process_input(input_vector[i].c_str(), db_filename);
+                    if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process input: %d\n", retval); }
+                    retval = process_background(db_background);
+                    if (retval) {log_messages.printf(MSG_CRITICAL, "Can't create process background: %d\n", retval); }
+                    retval = process_config(db_par1, db_par2);
+                    if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process config: %d\n", retval); }
+                    retval = make_job();
+                    if (retval) {
+                        log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
+                        exit(1);
+                    }
+                    memset(infiles, 0, sizeof(infiles));
+                }
+
+                retval = boinc_rmdir(input_dir_string);
                 if (retval) {
-                    log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
+                    log_messages.printf(MSG_CRITICAL, "Can't remove directory %s: %d\n", input_dir_string, retval);
                     exit(1);
                 }
-                memset(infiles, 0, sizeof(infiles));
-            }
+                memset(input_dir_string, 0 , sizeof(input_dir_string));
 
-            retval = boinc_rmdir(input_dir_string);
-            if (retval) {
-                log_messages.printf(MSG_CRITICAL, "Can't remove directory %s: %d\n", input_dir_string, retval);
-                exit(1);
+                // Изменение статуса файла в БД планктон
+                //
+                log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
+                sprintf(buff, "UPDATE tasks SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);
+                log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
+                mysql_query(conn, buff);
             }
-            memset(input_dir_string, 0 , sizeof(input_dir_string));
-
-            // Изменение статуса файла в БД планктон
-            //
-            log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
-            sprintf(buff, "UPDATE tasks SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);
-            log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
-            mysql_query(conn, buff);
         }
         sleep(SLEEP_INTERVAL);
     }
