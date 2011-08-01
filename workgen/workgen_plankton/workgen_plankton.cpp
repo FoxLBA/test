@@ -222,14 +222,11 @@ int make_job(char *db_taskID) {
 }
 
 int st1_count() {  //FIXME
-    int rez;
-    log_messages.printf(MSG_NORMAL, "Counting STATUS=1 tasks...\n");
     mysql_query(conn, "select count(taskID) from tasks where status='1'");
     result = mysql_store_result(conn);
     row = mysql_fetch_row(result);
-    rez = atoi(row[0]);
-    log_messages.printf(MSG_NORMAL, "Find: %s\n", row[0]); 
-    return rez;
+    log_messages.printf(MSG_NORMAL, "Tasks currently running: %s\n", row[0]);
+    return atoi(row[0]);
 }
 
 int cancel_wu() {
@@ -256,7 +253,7 @@ void main_loop() {
     char input_filename[255];
     int retval;
     int st1;
-    
+
     check_stop_daemons();
     // Сканируем базу каждые SLEEP_INTERVAL секунд
     //
@@ -266,7 +263,7 @@ void main_loop() {
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2' limit %d", MAX_TASKS-st1);
+            sprintf(buff, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2' order by taskID limit %d", MAX_TASKS-st1);
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
@@ -407,7 +404,7 @@ int main(int argc, char** argv) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
         exit(1);
     }
-    
+
     log_messages.printf(MSG_NORMAL, "Starting\n");
     main_loop();
 }
