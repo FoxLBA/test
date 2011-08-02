@@ -62,7 +62,7 @@ int main_loop(APP& app) {
     while(1) {
         check_stop_daemons();
 
-        sprintf(buf, "where appid=%d and assimilate_state=%d", app.id, ASSIMILATE_READY);
+        sprintf(buf, "where appid=%d and assimilate_state=%d and error_mask<>16", app.id, ASSIMILATE_READY);
         // Заполнение полей текущего ворк юнита
         retval = wu.enumerate(buf);
         if (retval) {
@@ -76,7 +76,7 @@ int main_loop(APP& app) {
         // Создание списка результатов задания
         vector<RESULT> results;
         if (strlen(task.name) > 0) {
-            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%s_%s_%%\" and workunit.assimilate_state=%d", task.id, task.login, task.name, ASSIMILATE_READY);
+            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%s_%s_%%\" and workunit.assimilate_state=%d and workunit.error_mask<>16", task.id, task.login, task.name, ASSIMILATE_READY);
             while (!result.enumerate(buf)) {
                 results.push_back(result);
             }
