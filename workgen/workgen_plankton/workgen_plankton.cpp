@@ -263,7 +263,7 @@ void main_loop() {
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2' order by taskID limit %d", MAX_TASKS-st1);
+            sprintf(buff, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2' and del <> '1' order by taskID limit %d", MAX_TASKS-st1);
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
