@@ -51,15 +51,18 @@ DB_WORKUNIT wu;
 
 int split_input(const char *db_login, const char *db_filename) {
     char split[255];
+    char buff[255];
 
     log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
     // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, db_filename);
+    sprintf(full_input_filename, "%s/%s/holograms/%s", config.project_path("user"), db_login, db_filename); //updated
     log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
 
     // Формирование имени папки для нарезок
     //
-    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
+//    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
+    sprintf(buff, "%s/%s/holograms/%s", config.project_path("tmp"), db_login, db_filename);
+    strncpy(input_dir_string, buff, strlen(buff)-4);  //FIXME
 
     log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
     log_messages.printf(MSG_NORMAL, "input_dir_string: %s\n", input_dir_string);
@@ -123,7 +126,7 @@ int process_background(char *filename) {
     sscanf(filename, "%[^.].%[^.]", basename, extension);
 
     // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s", config.project_path("user"), db_login, filename);
     log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
     sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
 
