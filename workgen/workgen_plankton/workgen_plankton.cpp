@@ -225,7 +225,7 @@ int make_job(char *db_taskID) {
 }
 
 int st1_count() {  //FIXME
-    mysql_query(conn, "select count(taskID) from tasks where status='1'");
+    mysql_query(conn, "select count(taskID) from task where status='1'");  //tasks->task
     result = mysql_store_result(conn);
     row = mysql_fetch_row(result);
     log_messages.printf(MSG_NORMAL, "Tasks currently running: %s\n", row[0]);
@@ -235,8 +235,8 @@ int st1_count() {  //FIXME
 int cancel_wu() {
     char *c_task_id;
     char buff[255];
-    log_messages.printf(MSG_NORMAL, "Trying to find tasks where STATUS=3 or DEL=1...\n");
-    mysql_query(conn, "select taskID from tasks where status=3 or del=1");
+    log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");   //tasks->task
+    mysql_query(conn, "select taskID from task where status=3 or del=1");  //tasks->task
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result))) {
         c_task_id = row[0];
@@ -266,7 +266,7 @@ void main_loop() {
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2' and del <> '1' order by taskID limit %d", MAX_TASKS-st1);
+            sprintf(buff, "select taskID, login, filename, background, par1, par2 from task inner join user on uid=id where status = '2' and del <> '1' order by taskID limit %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
@@ -319,7 +319,7 @@ void main_loop() {
                 // Изменение статуса файла в БД планктон
                 //
                 log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
-                sprintf(buff, "UPDATE tasks SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);
+                sprintf(buff, "UPDATE task SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);   //tasks->task
                 log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
                 mysql_query(conn, buff);
             }
@@ -385,14 +385,14 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    // инициализация подключения к БД plankton
+    // инициализация подключения к БД dims
     conn = mysql_init(NULL);
     if (conn == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
-    // подключение к БД plankton
-    if (mysql_real_connect(conn, "localhost", "root", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
+    // подключение к БД dims
+    if (mysql_real_connect(conn, "localhost", "boinc", "2011$bOiNc", "dihm1", 3313, NULL, 0) == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
