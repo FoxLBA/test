@@ -8,6 +8,7 @@ echo basename="$basename"
 extension=${file##*.}
 echo extension="$extension"
 path=${input/$file/}
+path=${path/user/tmp}
 echo path="$path"
 
 duration=$(ffmpeg -i "$input" 2>&1  | grep -E -o -e 'Duration: ..:..:..\...' | grep -E -o -e '(Duration: ){0}..:..:..\...')
@@ -21,7 +22,7 @@ seconds=${duration:6:2}
 length=$((hours*1440 + minutes*60 + seconds))
 #echo $length
 
-mkdir "$path/$basename"
+mkdir -p "$path/$basename"
 prefix=0
 for offset in $(seq 0 10 $length); do
     if [ $offset -ne $length ]; then
