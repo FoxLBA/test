@@ -392,7 +392,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     // подключение к БД dims
-    if (mysql_real_connect(conn, "localhost", "boinc", "2011$bOiNc", "dihm1", 3313, NULL, 0) == NULL) {
+    if (mysql_real_connect(conn, "127.0.0.1", "boinc", "2011$bOiNc", "dihm1", 3313, NULL, 0) == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
