@@ -51,15 +51,18 @@ DB_WORKUNIT wu;
 
 int split_input(const char *db_login, const char *db_filename) {
     char split[255];
+    char buff[255];
 
     log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
     // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, db_filename);
+    sprintf(full_input_filename, "%s/%s/holograms/%s", config.project_path("user"), db_login, db_filename); //updated
     log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
 
     // Формирование имени папки для нарезок
     //
-    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
+//    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
+    sprintf(buff, "%s/%s/holograms/%s", config.project_path("tmp"), db_login, db_filename);
+    strncpy(input_dir_string, buff, strlen(buff)-4);  //FIXME
 
     log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
     log_messages.printf(MSG_NORMAL, "input_dir_string: %s\n", input_dir_string);
@@ -123,7 +126,7 @@ int process_background(char *filename) {
     sscanf(filename, "%[^.].%[^.]", basename, extension);
 
     // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/%s", config.project_path("dir"), db_login, filename);
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s", config.project_path("user"), db_login, filename);
     log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
     sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
 
@@ -222,7 +225,7 @@ int make_job(char *db_taskID) {
 }
 
 int st1_count() {  //FIXME
-    mysql_query(conn, "select count(taskID) from tasks where status='1'");
+    mysql_query(conn, "select count(taskID) from task where status='1'");  //tasks->task
     result = mysql_store_result(conn);
     row = mysql_fetch_row(result);
     log_messages.printf(MSG_NORMAL, "Tasks currently running: %s\n", row[0]);
@@ -232,8 +235,8 @@ int st1_count() {  //FIXME
 int cancel_wu() {
     char *c_task_id;
     char buff[255];
-    log_messages.printf(MSG_NORMAL, "Trying to find tasks where STATUS=3 or DEL=1...\n");
-    mysql_query(conn, "select taskID from tasks where status=3 or del=1");
+    log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");   //tasks->task
+    mysql_query(conn, "select taskID from task where status=3 or del=1");  //tasks->task
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result))) {
         c_task_id = row[0];
@@ -263,7 +266,7 @@ void main_loop() {
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "select taskID, login, filename, background, par1, par2 from tasks inner join users on uid=id where status = '2' and del <> '1' order by taskID limit %d", MAX_TASKS-st1);
+            sprintf(buff, "select taskID, login, filename, background, par1, par2 from task inner join user on uid=id where status = '2' and del <> '1' order by taskID limit %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
@@ -316,7 +319,7 @@ void main_loop() {
                 // Изменение статуса файла в БД планктон
                 //
                 log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
-                sprintf(buff, "UPDATE tasks SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);
+                sprintf(buff, "UPDATE task SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);   //tasks->task
                 log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
                 mysql_query(conn, buff);
             }
@@ -382,14 +385,14 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    // инициализация подключения к БД plankton
+    // инициализация подключения к БД dims
     conn = mysql_init(NULL);
     if (conn == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
-    // подключение к БД plankton
-    if (mysql_real_connect(conn, "localhost", "root", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
+    // подключение к БД dims
+    if (mysql_real_connect(conn, "127.0.0.1", "boinc", "2011$bOiNc", "dihm1", 3313, NULL, 0) == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }

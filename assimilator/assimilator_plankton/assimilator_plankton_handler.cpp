@@ -13,7 +13,7 @@ int process_output(task_t task) {
 
     // Формирование имени итогового выходного файла
     //
-    sprintf(output_filename, "%s/%s_%d_%d.%s", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, task.extension);
+    sprintf(output_filename, "%s/%s_%d_%d.%s", config.project_path("tmp/%s/holograms", task.login), task.name, task.id, task.timestamp, task.extension);
     log_messages.printf(MSG_NORMAL, "output_filename: %s\n", output_filename);
     sprintf(command, "mencoder -msglevel all=1 -oac copy -ovc copy -o %s", output_filename);
     // Открывать результаты и доклеивать в итоговый файл
@@ -30,8 +30,10 @@ int process_background(task_t task) {
     char output_filename[65535];
 
     // Переложить все бекграунды в папку к пользователю
+    boinc_mkdir(config.project_path("tmp/%s/backgrounds", task.login));
     for (unsigned int i = 0; i < task.size; i++) {
-        sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
+        sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", config.project_path("tmp/%s/backgrounds", task.login), task.name, task.id, task.timestamp, i+1, task.size);
+//        boinc_make_dirs("", output_filename);
         log_messages.printf(MSG_NORMAL, "Saving background [%d] to: %s\n", i+1, output_filename);
         retval = boinc_copy(result_file_names[i][1].c_str(), output_filename);
         if (retval) {
@@ -46,8 +48,9 @@ int process_log(task_t task) {
     char output_filename[65535];
 
     // Переложить все логи в папку к пользователю
+    boinc_mkdir(config.project_path("tmp/%s/logs", task.login));
     for (unsigned int i = 0; i < task.size; i++) {
-        sprintf(output_filename, "%s/log_%s_%d_%d_%d_%d", config.project_path("dir/%s", task.login), task.name, task.id, task.timestamp, i+1, task.size);
+        sprintf(output_filename, "%s/log_%s_%d_%d_%d_%d", config.project_path("tmp/%s/logs", task.login), task.name, task.id, task.timestamp, i+1, task.size);
         log_messages.printf(MSG_NORMAL, "Saving log [%d] to: %s\n", i+1, output_filename);
         retval = boinc_copy(result_file_names[i][2].c_str(), output_filename);
         if (retval) {
