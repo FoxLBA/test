@@ -236,6 +236,8 @@ int encrypt (char *infile) {
         return -1;
     }
     /* clear up and return */
+    fclose(input);
+    fclose(cipher);
     zeromem(key, sizeof (key));
     zeromem(&ctr, sizeof (ctr));
     return 0;
@@ -261,8 +263,12 @@ int make_job(char *db_taskID) {
     wu.max_total_results = REPLICATION_FACTOR*8;
     wu.max_success_results = REPLICATION_FACTOR*4;
 
-    // Register the job with BOINC
+    // Encrypting, register the job with BOINC
     //
+    log_messages.printf(MSG_NORMAL, "Encrypting files...");
+    encrypt(infiles[0]);
+    encrypt(infiles[1]);
+    encrypt(infiles[2]);
     const char* in[] = {infiles[0], infiles[1], infiles[2]};
     log_messages.printf(MSG_NORMAL, "Creating work\n\n");
     return create_work(
