@@ -7,12 +7,12 @@ TARGET_APPS = apps/test
 TARGET_VERSIONS = text ffmpeg plankton
 
 all:
-	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do make -C "$$d"/"$$d"_"$$v"; done; done
-	for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do make -C "$$d"-"$$v"; done; done
+	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do $(MAKE) -C "$$d"/"$$d"_"$$v"; done; done
+	for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do $(MAKE) -C "$$d"-"$$v"; done; done
 
 clean:
-	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do make -C "$$d"/"$$d"_"$$v" clean; done; done
-	for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do make -C "$$d"-"$$v" clean; done; done
+	for d in $(TARGET_DAEMONS); do for v in $(TARGET_VERSIONS); do $(MAKE) -C "$$d"/"$$d"_"$$v" clean; done; done
+	for d in $(TARGET_APPS); do for v in $(TARGET_VERSIONS); do $(MAKE) -C "$$d"-"$$v" clean; done; done
 
 remote:
 	rsync -rchh --delete-after --progress . $(SERVER_PATH):$(SERVER_REPO)/
