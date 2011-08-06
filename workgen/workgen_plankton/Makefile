@@ -18,7 +18,7 @@ BINARIES = $(SOURCES:.cpp=)
 all: $(BINARIES)
 
 %: %.cpp
-	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) $(LIBS) $(LIBS-EXTRA) -o $@ `mysql_config --cflags --libs`
+	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) $(LIBS) $(LIBS-EXTRA) -o $@ `mysql_config --cflags --libs` -ltomcrypt
 
 clean:
 	rm -rf *.o *~ $(BINARIES)
