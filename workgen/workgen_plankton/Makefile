@@ -11,7 +11,7 @@ LIBS-EXTRA = 		-lz \
 					-lssl \
 					-lmysqlclient \
 					`mysql_config --cflags --libs` \
-					-ltomcrypt \
+
 
 SOURCES = $(wildcard *.cpp)
 BINARIES = $(SOURCES:.cpp=)

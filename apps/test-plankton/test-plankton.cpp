@@ -3,7 +3,7 @@
 #include "filesys.h"
 #include "boinc_api.h"
 
-#include <tomcrypt.h>
+#include "plankton_crypt.h"
 
 #define INPUT_FILENAME "in"
 #define OUTPUT_FILENAME "out"
@@ -11,72 +11,6 @@
 #define OUTPUT_BACKGROUND "out_back"
 #define CONFIG_FILENAME "config"
 #define LOG_FILENAME "log"
-
-int decrypt(char *infile) {
-    unsigned char key[16]="qwertyuiopasdfg", IV[16]="1234567890ABCDE", buffer[512];
-    symmetric_CTR ctr;
-    int err, numbytes;
-    int retval;
-
-    FILE* input = fopen(infile, "rb");
-    if (input == NULL) {fprintf(stderr, "error on input file\n"); exit (1);}
-    FILE* output = fopen("cipher.bin", "wb");
-    if (output == NULL) {fprintf(stderr, "error on output file\n"); exit (1);}
-
-    if (register_cipher (&twofish_desc) == -1) {
-        fprintf(stderr, "Error registering cipher\n");
-        return -1;
-    }
-
-    /* start up CTR mode */
-    if ((err = ctr_start (find_cipher("twofish"), /* index of desired cipher */
-                          IV,                     /* the initial vector */
-                          key,                    /* the secret key */
-                          16,                     /* length of secret key (16 bytes) */
-                          0,                      /* 0 == default # of rounds */
-                    CTR_COUNTER_LITTLE_ENDIAN,    /* Little endian counter */
-                          &ctr)                   /* where to store the CTR state */
-      ) != CRYPT_OK)
-    {
-      printf("ctr_start error: %s\n", error_to_string (err));
-      return -1;
-    }
-
-    // Decrypt
-    if ((err = ctr_setiv(IV,    /* the initial IV we gave to ctr_start */
-                       16,      /* the IV is 16 bytes long */
-                       &ctr)    /* the ctr state we wish to modify */
-    )!= CRYPT_OK) {
-        fprintf(stderr, "ctr_setiv error: %s\n", error_to_string (err));
-        return -1;
-    }
-
-    while (numbytes = fread(buffer, 1, sizeof(buffer), input)) {
-        if ((err = ctr_decrypt (buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
-            fprintf(stderr, "ctr_decrypt error: %s\n", error_to_string (err));
-            return -1;
-        }
-        fwrite(buffer, 1, numbytes, output);
-    }
-
-    /* terminate the stream */
-    if ((err = ctr_done (&ctr)) != CRYPT_OK) {
-        fprintf(stderr, "ctr_done error: %s\n", error_to_string (err));
-        return -1;
-    }
-    // rename
-    retval = boinc_rename("cipher.bin", infile);
-    if (retval) {
-        fprintf(stderr, "Error [%d] renaming file cipher.bin to %s\n", retval, infile);
-    }
-    /* clear up and return */
-    fclose(input);
-    fclose(output);
-    zeromem(key, sizeof (key));
-    zeromem(&ctr, sizeof (ctr));
-
-    return 0;
-}
 
 int main(int argc, char **argv) {
     int retval;
@@ -104,7 +38,7 @@ int main(int argc, char **argv) {
     boinc_copy(config_path, log_path);
 
     // decrypt
-    decrypt(input_path);
+    decrypt_file(input_path);
 
     // apply filter
     sprintf(buf, "mencoder -vf rectangle=400:400:250:250:red -o %s -oac copy -ovc lavc %s", output_path, input_path);

@@ -11,10 +11,12 @@ LIBS_DIR = 		$(DEPS_DIR)/libs/$(ARCH)
 INCLUDES = 		-I $(INCLUDES_DIR) \
 
 LIBS =			-L $(LIBS_DIR) \
+				-lplankton \
 				-lsched \
 				-lboinc_crypt \
 				-lboinc_api \
 				-lboinc \
+				-ltomcrypt \
 
 SERVER_PATH = boincadm@172.20.175.53
 

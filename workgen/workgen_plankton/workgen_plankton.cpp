@@ -13,7 +13,7 @@
 #include <my_global.h>
 #include <mysql.h>
 
-#include <tomcrypt.h>
+#include "plankton_crypt.h"
 
 #define REPLICATION_FACTOR 1
 #define SLEEP_INTERVAL 10
@@ -51,64 +51,6 @@ char *db_par2;
 char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
-int encrypt (char *infile) {
-    int retval;
-    unsigned char key[16]="qwertyuiopasdfg", IV[16]="1234567890ABCDE", buffer[512];
-    symmetric_CTR ctr;
-    int err, numbytes;
-
-    // Открыть входной файл
-    FILE *input=fopen(infile, "rb");
-    log_messages.printf(MSG_NORMAL, "Encrypting file: %s\n", infile);
-    if (input == NULL) {printf("error on input file\n"); exit (1);}
-    // Открыть шифр
-    FILE* cipher = fopen("cipher.bin", "w+b");  //FIXME
-    if (cipher == NULL) {printf("error on cipher file\n"); exit (1);}
-
-    /* register twofish first */
-    if (register_cipher (&twofish_desc) == -1) {
-        printf("Error registering cipher\n");
-        return -1;
-    }
-    /* somehow fill out key and IV */
-//    strcpy(key, "qwertyuiopasdfg");
-//    strcpy(IV, "1234567890ABCDE");
-    if ((err = ctr_start (find_cipher("twofish"), /* index of desired cipher */
-                      IV,                     /* the initial vector */
-                      key,                    /* the secret key */
-                      16,                     /* length of secret key (16 bytes) */
-                      0,                      /* 0 == default # of rounds */
-                CTR_COUNTER_LITTLE_ENDIAN,    /* Little endian counter */
-                      &ctr)                   /* where to store the CTR state */
-    ) != CRYPT_OK) {
-        printf("ctr_start error: %s\n", error_to_string (err));
-        return -1;
-    }
-    // Encrypt
-    while (numbytes = fread(buffer, 1, sizeof(buffer), input)) {
-        if ((err = ctr_encrypt (buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
-            printf("ctr_encrypt error: %s\n", error_to_string (err));
-            return -1;
-        }
-        fwrite(buffer, 1, numbytes, cipher);
-    }
-    /* terminate the stream */
-    if ((err = ctr_done (&ctr)) != CRYPT_OK) {
-        printf("ctr_done error: %s\n", error_to_string (err));
-        return -1;
-    }
-    // rename
-    retval = boinc_rename("cipher.bin", infile);
-    if (retval) {
-        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file cipher.bin to %s\n", retval, infile);
-    }
-    /* clear up and return */
-    fclose(input);
-    fclose(cipher);
-    zeromem(key, sizeof (key));
-    zeromem(&ctr, sizeof (ctr));
-    return 0;
-}
 
 int split_input(const char *db_login, const char *db_filename) {
     char split[255];
@@ -167,7 +109,7 @@ int process_input(const char *input_filename, const char *db_filename) {
     }
 
     // encrypt file
-    if (encrypt(newname)==0) {
+    if (encrypt_file(newname) == 0) {
         log_messages.printf(MSG_NORMAL, "File succesfully encrypted\n");
     }
 
@@ -200,7 +142,7 @@ int process_background(char *filename) {
     boinc_copy(full_input_filename, path);
 
     // encrypt background
-    if (encrypt(path)==0) {
+    if (encrypt_file(path) == 0) {
         log_messages.printf(MSG_NORMAL, "Background succesfully encrypted\n");
     }
 
@@ -251,7 +193,7 @@ int process_config(const char *par1, const char *par2) {
     fclose(configfile);
 
     // encrypt config
-    if (encrypt(path)==0) {
+    if (encrypt_file(path) == 0) {
         log_messages.printf(MSG_NORMAL, "Configfile succesfully encrypted\n");
     }
 

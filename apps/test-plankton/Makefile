@@ -7,7 +7,7 @@ CXXFLAGS-EXTRA = -static
 
 INCLUDES-EXTRA =
 
-LIBS-EXTRA = -ltomcrypt
+LIBS-EXTRA =
 
 SOURCES = $(wildcard *.cpp)
 BINARIES = $(SOURCES:.cpp=)
