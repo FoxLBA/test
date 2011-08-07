@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     // Подключение к БД dims
-    if (mysql_real_connect(conn, "172.0.0.1", "boinc", "2011$bOiNc", "dihm1", 3313, NULL, 0) == NULL) {
+    if (mysql_real_connect(conn, "127.0.0.1", "boinc", "2011$bOiNc", "dihm1", 3313, NULL, 0) == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
