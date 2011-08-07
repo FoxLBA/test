@@ -19,26 +19,41 @@ int decrypt(char *infile) {
     int retval;
 
     FILE* input = fopen(infile, "rb");
-    if (input == NULL) {printf("error on input file\n"); exit (1);}
-    FILE* output = fopen("tmp", "wb");
-    if (output == NULL) {printf("error on output file\n"); exit (1);}
+    if (input == NULL) {fprintf(stderr, "error on input file\n"); exit (1);}
+    FILE* output = fopen("cipher.bin", "wb");
+    if (output == NULL) {fprintf(stderr, "error on output file\n"); exit (1);}
 
     if (register_cipher (&twofish_desc) == -1) {
-        printf("Error registering cipher\n");
+        fprintf(stderr, "Error registering cipher\n");
         return -1;
     }
+
+    /* start up CTR mode */
+    if ((err = ctr_start (find_cipher("twofish"), /* index of desired cipher */
+                          IV,                     /* the initial vector */
+                          key,                    /* the secret key */
+                          16,                     /* length of secret key (16 bytes) */
+                          0,                      /* 0 == default # of rounds */
+                    CTR_COUNTER_LITTLE_ENDIAN,    /* Little endian counter */
+                          &ctr)                   /* where to store the CTR state */
+      ) != CRYPT_OK)
+    {
+      printf("ctr_start error: %s\n", error_to_string (err));
+      return -1;
+    }
+
     // Decrypt
     if ((err = ctr_setiv(IV,    /* the initial IV we gave to ctr_start */
                        16,      /* the IV is 16 bytes long */
                        &ctr)    /* the ctr state we wish to modify */
     )!= CRYPT_OK) {
-        printf("ctr_setiv error: %s\n", error_to_string (err));
+        fprintf(stderr, "ctr_setiv error: %s\n", error_to_string (err));
         return -1;
     }
 
     while (numbytes = fread(buffer, 1, sizeof(buffer), input)) {
         if ((err = ctr_decrypt (buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
-            printf("ctr_decrypt error: %s\n", error_to_string (err));
+            fprintf(stderr, "ctr_decrypt error: %s\n", error_to_string (err));
             return -1;
         }
         fwrite(buffer, 1, numbytes, output);
@@ -46,13 +61,13 @@ int decrypt(char *infile) {
 
     /* terminate the stream */
     if ((err = ctr_done (&ctr)) != CRYPT_OK) {
-        printf("ctr_done error: %s\n", error_to_string (err));
+        fprintf(stderr, "ctr_done error: %s\n", error_to_string (err));
         return -1;
     }
     // rename
-    retval = boinc_rename("tmp", infile);
+    retval = boinc_rename("cipher.bin", infile);
     if (retval) {
-        printf("Error [%d] renaming file cipher.bin to %s\n", retval, infile);
+        fprintf(stderr, "Error [%d] renaming file cipher.bin to %s\n", retval, infile);
     }
     /* clear up and return */
     fclose(input);
@@ -72,8 +87,7 @@ int main(int argc, char **argv) {
 
     retval = boinc_init();
     if (retval) {
-        fprintf(stderr, "%s boinc_init returned %d\n",
-            boinc_msg_prefix(buf), retval);
+        fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf), retval);
         exit(retval);
     }
 
@@ -92,7 +106,7 @@ int main(int argc, char **argv) {
     // decrypt
     decrypt(input_path);
 
-    // наложение фильтра    ffmpeg -vf drawbox=400:400:250:250:red -i %s %s_copy.avi
+    // apply filter
     sprintf(buf, "mencoder -vf rectangle=400:400:250:250:red -o %s -oac copy -ovc lavc %s", output_path, input_path);
     fprintf(stderr, "command: %s\n", buf);
     system(buf);
