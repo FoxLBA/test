@@ -10,6 +10,8 @@ INCLUDES-EXTRA = 	-I /usr/include/mysql/ \
 LIBS-EXTRA = 		-lz \
 					-lssl \
 					-lmysqlclient \
+					`mysql_config --cflags --libs` \
+					-ltomcrypt \
 
 SOURCES = assimilator_plankton.cpp
 BINARIES = $(SOURCES:.cpp=)
@@ -23,7 +25,7 @@ assimilator_plankton: assimilator_plankton.o assimilator_plankton_handler.o vali
 	$(CXX) -c $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) -o $@
 
 %: %.o
-	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) $(LIBS) $(LIBS-EXTRA) -o $@ `mysql_config --cflags --libs`
+	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) $(LIBS) $(LIBS-EXTRA) -o $@
 
 clean:
 	rm -rf *.o *~ $(BINARIES)

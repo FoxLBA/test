@@ -7,7 +7,7 @@ CXXFLAGS-EXTRA = -static
 
 INCLUDES-EXTRA =
 
-LIBS-EXTRA =
+LIBS-EXTRA = -ltomcrypt
 
 SOURCES = $(wildcard *.cpp)
 BINARIES = $(SOURCES:.cpp=)
@@ -16,7 +16,7 @@ BINARIES = $(SOURCES:.cpp=)
 all: $(BINARIES)
 
 %: %.cpp
-	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) $(LIBS) $(LIBS-EXTRA) -o $@ -ltomcrypt
+	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS-EXTRA) $(INCLUDES) $(INCLUDES-EXTRA) $(LIBS) $(LIBS-EXTRA) -o $@
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $<
@@ -25,4 +25,4 @@ clean:
 	rm -rf *.o *~ $(BINARIES)
 
 boinc_clean:
-	rm -rf stderr.txt boinc_finish_called boinc_lockfile out test_checkpoint
+	rm -rf stderr.txt boinc_finish_called boinc_lockfile out tmp log out_back
