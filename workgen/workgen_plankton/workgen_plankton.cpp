@@ -51,146 +51,6 @@ char *db_par2;
 char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
-int split_input(const char *db_login, const char *db_filename) {
-    char split[255];
-    char buff[255];
-
-    log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
-    // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "%s/%s/holograms/%s", config.project_path("user"), db_login, db_filename); //updated
-    log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
-
-    // Формирование имени папки для нарезок
-    //
-//    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
-    sprintf(buff, "%s/%s/holograms/%s", config.project_path("tmp"), db_login, db_filename);
-    strncpy(input_dir_string, buff, strlen(buff)-4);  //FIXME
-
-    log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
-    log_messages.printf(MSG_NORMAL, "input_dir_string: %s\n", input_dir_string);
-
-    // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
-    //
-    sprintf(split, "%s/ffsplit.sh %s", config.project_path("bin"), full_input_filename);
-    log_messages.printf(MSG_NORMAL, "==SCRIPT STARTING==: %s\n", split);
-    // вызов скрипта
-    return system(split)>>8;
-}
-
-int process_input(const char *input_filename, const char *db_filename) {
-    log_messages.printf(MSG_NORMAL, "Processing input: %s\n", input_filename);
-    char name[255];
-    char newname[255];
-    char oldname[255];
-    char basename[255];
-    char extension[255];
-    int retval;
-
-    // Чтение строки, формирование путей и имён
-    //
-    // Имя воркюнита
-    sscanf(db_filename, "%[^.].%[^.]", basename, extension);
-    sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
-    config.download_path(name, newname);
-
-    sprintf(oldname, "%s/%s", input_dir_string, input_filename);
-    log_messages.printf(MSG_NORMAL, "oldname: %s\n", oldname);
-    log_messages.printf(MSG_NORMAL, "newname: %s\n", newname);
-
-    retval = boinc_copy(oldname, newname);
-    if (retval) {
-        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file %s to %s\n", retval, oldname, newname);
-    } else {
-        log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
-        retval = boinc_delete_file(oldname);
-        if (retval)
-            log_messages.printf(MSG_CRITICAL, "Error [%d] removing file %s\n", retval, oldname);
-    }
-
-    strcpy(wu.name, name);
-
-    strcpy(infiles[0], name);
-    for (int i=0; i<3; i++) {
-        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
-    }
-    log_messages.printf(MSG_NORMAL, "============\n");
-
-    return 0;
-}
-
-int process_background(char *filename) {
-    log_messages.printf(MSG_NORMAL, "Processing background: %s\n", filename);
-    char path[255];
-    char outname[255];
-    char basename[255];
-    char extension[255];
-
-    sscanf(filename, "%[^.].%[^.]", basename, extension);
-
-    // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/backgrounds/%s", config.project_path("user"), db_login, filename);
-    log_messages.printf(MSG_NORMAL, "Full background path: %s\n", full_input_filename);
-    sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
-
-    config.download_path(outname, path);
-    log_messages.printf(MSG_NORMAL, "Writing background to: %s\n", path);
-
-    strcpy(infiles[1], outname);
-    for (int i=0; i<3; i++) {
-        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
-    }
-    log_messages.printf(MSG_NORMAL, "============\n");
-
-    return boinc_copy(full_input_filename, path);
-}
-
-int process_config(const char *par1, const char *par2) {
-    char in_par1[255];
-    char in_par2[255];
-    strcpy(in_par1, par1);
-    strcpy(in_par2, par2);
-    log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", in_par1, in_par2);
-    FILE *configfile;
-    int i=0;
-    char path[255];
-    char filename[255];
-    // Имя конфига
-    sprintf(filename, "%s_%s_%s_config_%d_%d_%d.cfg", app.name, db_taskID, db_login, timestamp, current_part, total_parts);
-
-    // Путь до конфига
-    config.download_path(filename, path);
-    log_messages.printf(MSG_NORMAL, "Writing config to: %s\n", path);
-
-    // Здесь парсятся поля, открывается файл path и в него пишется текст конфига
-    configfile = fopen(path, "w");
-    if (configfile==NULL) {
-        printf("config open error\n");
-    }
-
-    // Парсинг полей
-    while (in_par1[i]!='\0' || in_par2[i]!='\0') {
-        if (in_par1[i]=='&') {
-            in_par1[i]='\n';
-        }
-        if (in_par2[i]=='&') {
-            in_par2[i]='\n';
-        }
-        i++;
-    }
-
-    // Запись конфига. Возможно потребуется замена path на filename
-    fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, in_par1, in_par2);
-    fclose(configfile);
-
-    strcpy(infiles[2], filename);
-    for (int i=0; i<3; i++) {
-        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
-    }
-    log_messages.printf(MSG_NORMAL, "============\n");
-
-    return 0;
-}
-
 int encrypt (char *infile) {
     unsigned char key[16]="qwertyuiopasdfg", IV[16]="1234567890ABCDE", buffer[512];
     symmetric_CTR ctr;
@@ -198,6 +58,7 @@ int encrypt (char *infile) {
 
     // Открыть входной файл
     FILE *input=fopen(infile, "rb");
+    log_messages.printf(MSG_NORMAL, "Encrypting file: %s\n", infile);
     if (input == NULL) {printf("error on input file\n"); exit (1);}
     // Открыть шифр
     FILE* cipher = fopen("cipher.bin", "w+b");  //FIXME
@@ -243,6 +104,160 @@ int encrypt (char *infile) {
     return 0;
 }
 
+int split_input(const char *db_login, const char *db_filename) {
+    char split[255];
+    char buff[255];
+
+    log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
+    // Путь до ожидающего обработки файла
+    sprintf(full_input_filename, "%s/%s/holograms/%s", config.project_path("user"), db_login, db_filename); //updated
+    log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
+
+    // Формирование имени папки для нарезок
+    //
+//    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
+    sprintf(buff, "%s/%s/holograms/%s", config.project_path("tmp"), db_login, db_filename);
+    strncpy(input_dir_string, buff, strlen(buff)-4);  //FIXME
+
+    log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
+    log_messages.printf(MSG_NORMAL, "input_dir_string: %s\n", input_dir_string);
+
+    // Запуск скрипта на разделение видеофайла (файл full_input_filename, складывать в input_dir_string)
+    //
+    sprintf(split, "%s/ffsplit.sh %s", config.project_path("bin"), full_input_filename);
+    log_messages.printf(MSG_NORMAL, "==SCRIPT STARTING==: %s\n", split);
+    // вызов скрипта
+    return system(split)>>8;
+}
+
+int process_input(const char *input_filename, const char *db_filename) {
+    log_messages.printf(MSG_NORMAL, "Processing input: %s\n", input_filename);
+    char name[255];
+    char newname[255];
+    char oldname[255];
+    char basename[255];
+    char extension[255];
+    int retval;
+
+    // Чтение строки, формирование путей и имён
+    //
+    // Имя воркюнита
+    sscanf(db_filename, "%[^.].%[^.]", basename, extension);
+    sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
+    config.download_path(name, newname);
+
+    sprintf(oldname, "%s/%s", input_dir_string, input_filename);
+    log_messages.printf(MSG_NORMAL, "From full filepath: %s\n", oldname);
+    log_messages.printf(MSG_NORMAL, "To full filepath: %s\n", newname);
+
+    retval = boinc_copy(oldname, newname);
+    if (retval) {
+        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file %s to %s\n", retval, oldname, newname);
+    } else {
+        log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
+        retval = boinc_delete_file(oldname);
+        if (retval)
+            log_messages.printf(MSG_CRITICAL, "Error [%d] removing file %s\n", retval, oldname);
+    }
+
+    // encrypt file
+    if (encrypt(newname)==0) {
+        log_messages.printf(MSG_NORMAL, "File succesfully encrypted\n");
+    }
+
+    strcpy(wu.name, name);
+    strcpy(infiles[0], name);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
+    log_messages.printf(MSG_NORMAL, "============\n");
+
+    return 0;
+}
+
+int process_background(char *filename) {
+    log_messages.printf(MSG_NORMAL, "Processing background: %s\n", filename);
+    char path[255];
+    char outname[255];
+    char basename[255];
+    char extension[255];
+
+    sscanf(filename, "%[^.].%[^.]", basename, extension);
+
+    // Путь до бекграунда
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s", config.project_path("user"), db_login, filename);
+    log_messages.printf(MSG_NORMAL, "From full background path: %s\n", full_input_filename);
+    sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
+
+    config.download_path(outname, path);
+    log_messages.printf(MSG_NORMAL, "To full background path: %s\n", path);
+    boinc_copy(full_input_filename, path);
+
+    // encrypt background
+    if (encrypt(path)==0) {
+        log_messages.printf(MSG_NORMAL, "Background succesfully encrypted\n");
+    }
+
+    strcpy(infiles[1], outname);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
+    log_messages.printf(MSG_NORMAL, "============\n");
+    return 0;
+}
+
+int process_config(const char *par1, const char *par2) {
+    char in_par1[255];
+    char in_par2[255];
+    strcpy(in_par1, par1);
+    strcpy(in_par2, par2);
+    log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", in_par1, in_par2);
+    FILE *configfile;
+    int i=0;
+    char path[255];
+    char filename[255];
+    // Имя конфига
+    sprintf(filename, "%s_%s_%s_config_%d_%d_%d.cfg", app.name, db_taskID, db_login, timestamp, current_part, total_parts);
+
+    // Путь до конфига
+    config.download_path(filename, path);
+    log_messages.printf(MSG_NORMAL, "To full config path: %s\n", path);
+
+    // Здесь парсятся поля, открывается файл path и в него пишется текст конфига
+    configfile = fopen(path, "w");
+    if (configfile==NULL) {
+        printf("config open error\n");
+    }
+
+    // Парсинг полей
+    while (in_par1[i]!='\0' || in_par2[i]!='\0') {
+        if (in_par1[i]=='&') {
+            in_par1[i]='\n';
+        }
+        if (in_par2[i]=='&') {
+            in_par2[i]='\n';
+        }
+        i++;
+    }
+
+    // Запись конфига. Возможно потребуется замена path на filename
+    fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, in_par1, in_par2);
+    fclose(configfile);
+
+    // encrypt config
+    if (encrypt(path)==0) {
+        log_messages.printf(MSG_NORMAL, "Configfile succesfully encrypted\n");
+    }
+
+    strcpy(infiles[2], filename);
+    for (int i=0; i<3; i++) {
+        log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
+    }
+    log_messages.printf(MSG_NORMAL, "============\n");
+
+    return 0;
+}
+
 // create one new job
 //
 int make_job(char *db_taskID) {
@@ -263,12 +278,6 @@ int make_job(char *db_taskID) {
     wu.max_total_results = REPLICATION_FACTOR*8;
     wu.max_success_results = REPLICATION_FACTOR*4;
 
-    // Encrypting, register the job with BOINC
-    //
-    log_messages.printf(MSG_NORMAL, "Encrypting files...");
-    encrypt(infiles[0]);
-    encrypt(infiles[1]);
-    encrypt(infiles[2]);
     const char* in[] = {infiles[0], infiles[1], infiles[2]};
     log_messages.printf(MSG_NORMAL, "Creating work\n\n");
     return create_work(
