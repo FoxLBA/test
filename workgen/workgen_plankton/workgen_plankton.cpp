@@ -52,6 +52,7 @@ char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
 int encrypt (char *infile) {
+    int retval;
     unsigned char key[16]="qwertyuiopasdfg", IV[16]="1234567890ABCDE", buffer[512];
     symmetric_CTR ctr;
     int err, numbytes;
@@ -95,6 +96,11 @@ int encrypt (char *infile) {
     if ((err = ctr_done (&ctr)) != CRYPT_OK) {
         printf("ctr_done error: %s\n", error_to_string (err));
         return -1;
+    }
+    // rename
+    retval = boinc_rename("cipher.bin", infile);
+    if (retval) {
+        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file cipher.bin to %s\n", retval, infile);
     }
     /* clear up and return */
     fclose(input);
