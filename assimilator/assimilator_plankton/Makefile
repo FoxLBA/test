@@ -11,7 +11,6 @@ LIBS-EXTRA = 		-lz \
 					-lssl \
 					-lmysqlclient \
 					`mysql_config --cflags --libs` \
-					-ltomcrypt \
 
 SOURCES = assimilator_plankton.cpp
 BINARIES = $(SOURCES:.cpp=)

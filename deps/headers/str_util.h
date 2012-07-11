@@ -25,10 +25,7 @@
 #include <string>
 #include <vector>
 
-#define KILO (1024.0)
-#define MEGA (1048576.0)
-#define GIGA (1024.*1048576.0)
-
+extern void strcpy_overlap(char*, const char*);
 extern int ndays_to_string(double x, int smallest_timescale, char *buf);
 extern void nbytes_to_string(double nbytes, double total_bytes, char* str, int len);
 extern int parse_command_line(char*, char**);
@@ -73,13 +70,11 @@ extern int string_substitute(
 //
 extern void mysql_timestamp(double, char*);
 
-// returns short text description of error corresponding to
-// int errornumber from error_numbers.h
-//
-extern const char* boincerror(int which_error);
 extern const char* network_status_string(int);
 extern const char* rpc_reason_string(int);
 extern const char* suspend_reason_string(int reason);
+extern const char* run_mode_string(int mode);
 
+extern void strip_translation(char* p);
 
 #endif

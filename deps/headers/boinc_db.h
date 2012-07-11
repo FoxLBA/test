@@ -31,6 +31,7 @@
 
 #include "db_base.h"
 #include "average.h"
+#include "parse.h"
 
 extern DB_CONN boinc_db;
 
@@ -83,6 +84,8 @@ struct APP {
         // Approximates (actual FLOPS)/wu.rsc_fpops_est
     bool host_scale_check;
         // use host scaling cautiously, to thwart cherry picking
+    bool homogeneous_app_version;
+        // do all instances of each job using the same app version
 
     int write(FILE*);
     void clear();
@@ -125,8 +128,8 @@ struct APP_VERSION {
         // this is the reciprocal of efficiency
     double pfc_scale;
         // PFC scaling factor for this app (or 0 if not enough data)
-        // The reciprocal of this version's efficiency relative
-        // to that of the most efficient version
+        // The reciprocal of this version's efficiency, averaged over all jobs,
+        // relative to that of the most efficient version
     double expavg_credit;
     double expavg_time;
 
@@ -331,14 +334,16 @@ struct HOST {
         // that fail validation
         // DEPRECATED
 
-    // the following not stored in DB
-    //
-    char p_features[256];
+    // the following not in DB
+    char p_features[1024];
+    char virtualbox_version[256];
+    bool p_vm_extensions_disabled;
 
-    int parse(FILE*);
-    int parse_time_stats(FILE*);
-    int parse_net_stats(FILE*);
-    int parse_disk_usage(FILE*);
+    int parse(XML_PARSER&);
+    int parse_time_stats(XML_PARSER&);
+    int parse_net_stats(XML_PARSER&);
+    int parse_disk_usage(XML_PARSER&);
+
     void fix_nans();
     void clear();
 };
@@ -427,6 +432,9 @@ struct WORKUNIT {
     double rsc_bandwidth_bound;
         // send only to hosts with at least this much download bandwidth
     int fileset_id;
+    int app_version_id;
+        // if app uses homogeneous_app_version,
+        // which version this job is committed to (0 if none)
 
     // the following not used in the DB
     char app_name[256];
@@ -441,10 +449,12 @@ struct CREDITED_JOB {
     void clear();
 };
 
-// WARNING: be Very careful about changing any values,
+// WARNING: be very careful about changing any values,
 // especially for a project already running -
 // the database will become inconsistent
 
+// values of result.server_state
+//
 //#define RESULT_SERVER_STATE_INACTIVE       1
 #define RESULT_SERVER_STATE_UNSENT         2
 #define RESULT_SERVER_STATE_IN_PROGRESS    4
@@ -452,6 +462,8 @@ struct CREDITED_JOB {
     // we received a reply, timed out, or decided not to send.
     // Note: we could get a reply even after timing out.
 
+// values of result.outcome
+//
 #define RESULT_OUTCOME_INIT             0
 #define RESULT_OUTCOME_SUCCESS          1
 #define RESULT_OUTCOME_COULDNT_SEND     2
@@ -469,6 +481,8 @@ struct CREDITED_JOB {
 #define RESULT_OUTCOME_CLIENT_DETACHED  7
     // we believe that the client detached
 
+// values of result.validate_state
+//
 #define VALIDATE_STATE_INIT         0
 #define VALIDATE_STATE_VALID        1
 #define VALIDATE_STATE_INVALID      2
@@ -520,11 +534,12 @@ struct RESULT {
     int batch;
     int file_delete_state;          // see above; values for file_delete_state
     int validate_state;
-    double claimed_credit;          // CPU time times host credit/sec
+    double claimed_credit;          // deprecated
     double granted_credit;          // == canonical credit of WU
     double opaque;                  // project-specific; usually external ID
     int random;                     // determines send order
     int app_version_num;            // version# of app (not core client)
+        // DEPRECATED - THIS DOESN'T DETERMINE VERSION ANY MORE
     int appid;                      // copy of WU's appid
     int exit_status;                // application exit status, if any
     int teamid;
@@ -533,30 +548,60 @@ struct RESULT {
     double elapsed_time;
         // AKA runtime; returned by 6.10+ clients
     double flops_estimate;
-        // misnomer: actually the peak device FLOPS,
-        // returned by app_plan()
-        // An adjusted version of this is sent to clients.
+        // misnomer: actually the peak device FLOPS, returned by app_plan().
     int app_version_id;
         // ID of app version used to compute this
         // 0 if unknown (relic of old scheduler)
         // -1 anon platform, unknown resource type (relic)
         // -2/-3/-4 anonymous platform (see variants above)
-
-    // the following used by the scheduler, but not stored in the DB
-    //
-    char wu_name[256];
-    double fpops_per_cpu_sec;
-    double fpops_cumulative;
-    double intops_per_cpu_sec;
-    double intops_cumulative;
-    int units;      // used for granting credit by # of units processed
-    int parse_from_client(FILE*);
-    char platform_name[256];
-    BEST_APP_VERSION* bavp;
+    bool runtime_outlier;
+        // the validator tagged this as having an unusual elapsed time;
+        // don't include it in PFC or elapsed time statistics.
 
     void clear();
-    int write_to_client(FILE*);
 };
+
+struct BATCH {
+    int id;
+    int user_id;
+        // submitter
+    int create_time;
+    double logical_start_time;
+    double logical_end_time;
+    double est_completion_time;
+        // current estimate of completion time
+    int njobs;
+        // # of workunits
+    double fraction_done;
+        // based on workunits completed
+    int nerror_jobs;
+        // # of workunits with error
+    int state;
+        // see below
+    double completion_time;
+        // when state became >= COMPLETE
+    double credit_estimate;
+        // initial estimate of required credit, counting replicas
+    double credit_canonical;
+        // the sum of credits of canonical results
+    double credit_total;
+        // the sum of credits of all results
+    char name[256];
+        // user-assigned name; need not be unique
+    int app_id;
+};
+
+// values of batch.state
+//
+#define BATCH_STATE_INIT            0
+#define BATCH_STATE_IN_PROGRESS     1
+#define BATCH_STATE_COMPLETE        2
+    // "complete" means all workunits have either
+    // a canonical result or an error
+#define BATCH_STATE_ABORTED         3
+#define BATCH_STATE_CLEANED_UP      4
+    // input/output files can be deleted,
+    // result and workunit records can be purged.
 
 struct MSG_FROM_HOST {
     int id;
@@ -581,11 +626,11 @@ struct MSG_TO_HOST {
 struct ASSIGNMENT {
     int id;
     int create_time;
-    int target_id;
-    int target_type;
-    int multi;
+    int target_id;              // ID of target host, user, or team
+    int target_type;            // none/host/user/team
+    int multi;                  // 0 = single host, 1 = all hosts in set
     int workunitid;
-    int resultid;
+    int resultid;               // if not multi, the result ID
     void clear();
 };
 
@@ -608,6 +653,7 @@ struct TRANSITIONER_ITEM {
     int priority;
     int hr_class;
     int batch;
+    int app_version_id;
     int res_id; // This is the RESULT ID
     char res_name[256];
     int res_report_deadline;
@@ -748,6 +794,10 @@ public:
     int get_id();
     int update_diff_sched(HOST&);
     int update_diff_validator(HOST&);
+    int fpops_percentile(double percentile, double& fpops);
+        // return the given percentile of p_fpops
+    int fpops_mean(double& mean);
+    int fpops_stddev(double& stddev);
     void db_print(char*);
     void db_parse(MYSQL_ROW &row);
     void operator=(HOST& r) {HOST::operator=(r);}
@@ -757,7 +807,7 @@ class DB_RESULT : public DB_BASE, public RESULT {
 public:
     DB_RESULT(DB_CONN* p=0);
     int get_id();
-    int mark_as_sent(int old_server_state);
+    int mark_as_sent(int old_server_state, int report_grace_period);
     void db_print(char*);
     void db_print_values(char*);
     void db_parse(MYSQL_ROW &row);
@@ -916,7 +966,6 @@ struct SCHED_RESULT_ITEM {
     int sent_time;
     int received_time;
     double cpu_time;
-    double claimed_credit;
     char xml_doc_out[BLOB_SIZE];
     char stderr_out[BLOB_SIZE];
     int app_version_num;

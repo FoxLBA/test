@@ -25,6 +25,12 @@
 
 #define GUI_RPC_PORT                                31416
 
+#define COBBLESTONE_SCALE 200/86400e9
+    // multiply normalized PFC by this to get Cobblestones
+
+// run modes for CPU, GPU, network,
+// controlled by Activity menu and snooze button
+//
 #define RUN_MODE_ALWAYS 1
 #define RUN_MODE_AUTO   2
 #define RUN_MODE_NEVER  3
@@ -50,25 +56,6 @@
 #define HTTP_STATUS_RANGE_REQUEST_ERROR     416
 #define HTTP_STATUS_INTERNAL_SERVER_ERROR   500
 #define HTTP_STATUS_SERVICE_UNAVAILABLE     503
-
-// the core client can be requested to provide screensaver graphics (SSG).
-// The following are states of this function:
-
-#define SS_STATUS_ENABLED                           1
-    // requested to provide SSG
-#define SS_STATUS_BLANKED                           3
-    // not providing SSG, SS should blank screen
-#define SS_STATUS_BOINCSUSPENDED                    4
-    // not providing SS because suspended
-#define SS_STATUS_NOAPPSEXECUTING                   6
-    // no apps executing
-#define SS_STATUS_NOGRAPHICSAPPSEXECUTING           7
-    // apps executing, but none graphical
-#define SS_STATUS_QUIT                              8
-    // not requested to provide SSG
-#define SS_STATUS_NOPROJECTSDETECTED                9
-    // SSG unsupported; client running as daemon
-#define SS_STATUS_DAEMONALLOWSNOGRAPHICS            10
 
 // graphics messages
 //
@@ -115,27 +102,30 @@ enum SUSPEND_REASON {
     SUSPEND_REASON_INITIAL_DELAY = 256,
     SUSPEND_REASON_EXCLUSIVE_APP_RUNNING = 512,
     SUSPEND_REASON_CPU_USAGE = 1024,
-    SUSPEND_REASON_NETWORK_QUOTA_EXCEEDED = 2048
+    SUSPEND_REASON_NETWORK_QUOTA_EXCEEDED = 2048,
+    SUSPEND_REASON_OS = 4096
 };
 
-// States of a result on a client.
+// Values of RESULT::state
 // THESE MUST BE IN NUMERICAL ORDER
 // (because of the > comparison in RESULT::computing_done())
 //
-#define RESULT_NEW               0
+#define RESULT_NEW                  0
     // New result
-#define RESULT_FILES_DOWNLOADING 1
+#define RESULT_FILES_DOWNLOADING    1
     // Input files for result (WU, app version) are being downloaded
-#define RESULT_FILES_DOWNLOADED  2
+#define RESULT_FILES_DOWNLOADED     2
     // Files are downloaded, result can be (or is being) computed
-#define RESULT_COMPUTE_ERROR     3
+#define RESULT_COMPUTE_ERROR        3
     // computation failed; no file upload
-#define RESULT_FILES_UPLOADING   4
+#define RESULT_FILES_UPLOADING      4
     // Output files for result are being uploaded
-#define RESULT_FILES_UPLOADED    5
+#define RESULT_FILES_UPLOADED       5
     // Files are uploaded, notify scheduling server at some point
-#define RESULT_ABORTED          6
+#define RESULT_ABORTED              6
     // result was aborted
+#define RESULT_UPLOAD_FAILED        7
+    // some output file permanent failure
 
 // values of ACTIVE_TASK::task_state
 //
@@ -158,7 +148,6 @@ enum SUSPEND_REASON {
     // aborted process has exited
 #define PROCESS_COULDNT_START   7
 
-
 // values of "network status"
 //
 #define NETWORK_STATUS_ONLINE			0
@@ -168,7 +157,6 @@ enum SUSPEND_REASON {
 
 // reasons for making a scheduler RPC:
 //
-
 #define RPC_REASON_USER_REQ         1
 #define RPC_REASON_RESULTS_DUE      2
 #define RPC_REASON_NEED_WORK        3

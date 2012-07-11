@@ -18,6 +18,9 @@
 #include "boinc_db.h"
 #include "sched_types.h"
 
+// this keeps track of the project's lowest and highest requirements
+// for a GPU type, so that we can send users an appropriate message
+//
 struct GPU_REQUIREMENTS {
     double min_ram;
     double opt_ram;
@@ -57,4 +60,4 @@ extern GPU_REQUIREMENTS ati_requirements;
 
 extern bool wu_is_infeasible_custom(WORKUNIT&, APP&, BEST_APP_VERSION&);
 extern bool app_plan(SCHEDULER_REQUEST&, char* plan_class, HOST_USAGE&);
-extern bool app_plan_uses_gpu(const char* plan_class);
+extern void handle_file_xfer_results();

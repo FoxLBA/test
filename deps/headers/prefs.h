@@ -152,6 +152,8 @@ struct GLOBAL_PREFS {
     double max_ncpus_pct;
     int max_ncpus;
     double cpu_scheduling_period_minutes;
+        // length of a time slice.
+        // scheduling happens more often.
     double disk_interval;
     double disk_max_used_gb;
     double disk_max_used_pct;
@@ -167,6 +169,8 @@ struct GLOBAL_PREFS {
     char source_project[256];
     char source_scheduler[256];
     bool host_specific;
+        // an account manager can set this; if set, don't propagate
+    bool override_file_present;
 
     GLOBAL_PREFS();
     void defaults();

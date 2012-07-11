@@ -25,6 +25,7 @@
 #define _SCHED_SHMEM_H_
 
 #include "boinc_db.h"
+#include "sched_util.h"
 #include "hr_info.h"
 
 // the following must be at least as large as DB tables
@@ -55,7 +56,7 @@ struct WU_RESULT {
     int state;
         // EMPTY, PRESENT, or PID of locking process
     int infeasible_count;
-    bool need_reliable;		// try to send to a reliable host
+    bool need_reliable;        // try to send to a reliable host
     WORKUNIT workunit;
     int resultid;
     int time_added_to_shared_memory;
@@ -111,6 +112,9 @@ struct SCHED_SHMEM {
     APP* lookup_app(int);
     APP* lookup_app_name(char*);
     APP_VERSION* lookup_app_version(int);
+    APP_VERSION* lookup_app_version_platform_plan_class(
+        int platform, char* plan_class
+    );
     PLATFORM* lookup_platform_id(int);
     PLATFORM* lookup_platform(char*);
 };

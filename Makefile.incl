@@ -18,7 +18,7 @@ LIBS =			-L $(LIBS_DIR) \
 				-lboinc \
 				-ltomcrypt \
 
-SERVER_PATH = boincadm@172.20.175.53
+SERVER_PATH = boincadm@172.20.165.252
 
 ifeq ($(USER),frosty)
     SERVER_REPO = build/boinc

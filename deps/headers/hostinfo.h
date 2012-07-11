@@ -31,6 +31,8 @@
 #include "miofile.h"
 #include "coproc.h"
 
+// if you add fields, update clear_host_info()
+
 class HOST_INFO {
 public:
     int timezone;                 // local STANDARD time - UTC time (in seconds)
@@ -47,6 +49,7 @@ public:
     double p_iops;
     double p_membw;
     double p_calculated;          // when benchmarks were last run, or zero
+    bool p_vm_extensions_disabled;
 
     double m_nbytes;              // Total amount of memory in bytes
     double m_cache;
@@ -58,11 +61,16 @@ public:
     char os_name[256];
     char os_version[256];
 
-    COPROCS coprocs;
+    // the following are non-empty if that VM system is installed
+    //
+    char virtualbox_version[256];
+    // ... add entries for VMWare, others
+
+    COPROCS _coprocs;
 
     HOST_INFO();
-    int parse(MIOFILE&, bool benchmarks_only = false);
-    int write(MIOFILE&, bool suppress_net_info, bool include_coprocs);
+    int parse(XML_PARSER&, bool benchmarks_only = false);
+    int write(MIOFILE&, bool include_net_info, bool include_coprocs);
     int parse_cpu_benchmarks(FILE*);
     int write_cpu_benchmarks(FILE*);
     void print();
@@ -75,32 +83,26 @@ public:
 #endif
     int get_host_info();
     int get_local_network_info();
+    int get_virtualbox_version();
     void clear_host_info();
     void make_random_string(const char* salt, char* out);
     void generate_host_cpid();
-    inline bool have_cuda() {
-        return (coprocs.cuda.count > 0);
-    }
-    inline bool have_ati() {
-        return (coprocs.ati.count > 0);
-    }
 };
 
 #ifdef __APPLE__
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <mach/port.h>
+
 #include <IOKit/hidsystem/IOHIDLib.h>
 #include <IOKit/hidsystem/IOHIDParameter.h>
+#include <IOKit/hidsystem/event_status_driver.h>
 
-// Apple has removed NxIdleTime() beginning with OS 10.6, so we must use 
-// weak linking to avoid a run-time crash.  For details, please see the 
-// comments in the __APPLE__ version of HOST_INFO::users_idle() in 
+// Apple has removed NxIdleTime() beginning with OS 10.6, so we must try
+// loading it at run time to avoid a link error.  For details, please see
+// the comments in the __APPLE__ version of HOST_INFO::users_idle() in
 // client/hostinfo_unix.cpp.
-typedef mach_port_t NXEventHandle;
-NXEventHandle NXOpenEventStatus(void) __attribute__((weak_import));
-extern double NXIdleTime(NXEventHandle handle) __attribute__((weak_import));
+typedef double (*nxIdleTimeProc)(NXEventHandle handle);
 #ifdef __cplusplus
 }	// extern "C"
 #endif

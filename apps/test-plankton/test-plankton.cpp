@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 
     retval = boinc_init();
     if (retval) {
-        fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf), retval);
+        fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
         exit(retval);
     }
 
@@ -36,15 +36,18 @@ int main(int argc, char **argv) {
     // assume we did something with those files
     boinc_copy(inbg_path, outbg_path);
     boinc_copy(config_path, log_path);
-
+/*
     // decrypt
     decrypt_file(input_path);
-
+*/
     // apply filter
     sprintf(buf, "mencoder -vf rectangle=400:400:250:250:red -o %s -oac copy -ovc lavc %s", output_path, input_path);
     fprintf(stderr, "command: %s\n", buf);
     system(buf);
-
+/*
+    //encrypt
+    encrypt_file(output_path);
+*/
     //cleanup and exit
     boinc_fraction_done(1);
     boinc_finish(0);

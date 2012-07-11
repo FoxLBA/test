@@ -35,10 +35,14 @@ extern void push_unique(std::string, std::vector<std::string>&);
 // NOTE: use #include <functional>   to get max,min
 
 #define SECONDS_PER_DAY 86400
+#define KILO (1024.0)
+#define MEGA (1048576.0)
+#define GIGA (1024.*1048576.0)
 
 static inline double drand() {
     return (double)rand()/(double)RAND_MAX;
 }
+extern double rand_normal();
 
 #ifdef _WIN32
 #include <windows.h>
@@ -58,13 +62,9 @@ static const int PROCESS_MEDIUM_PRIORITY = 10;
 extern double linux_cpu_time(int pid);
 #endif
 
-extern void update_average(double, double, double, double&, double&);
+extern void update_average(double, double, double, double, double&, double&);
 
 extern int boinc_calling_thread_cpu_time(double&);
-
-// convert UNIX time to MySQL timestamp (yyyymmddhhmmss)
-//
-extern void mysql_timestamp(double, char*);
 
 // fake a crash
 //
@@ -83,7 +83,7 @@ extern int read_file_string(
 #ifdef _WIN32
 
 extern int run_program(
-    const char* path, const char* cdir, int argc, char *const argv[], double, HANDLE&
+    const char* dir, const char* file, int argc, char *const argv[], double, HANDLE&
 );
 
 extern void kill_program(HANDLE);
@@ -92,7 +92,7 @@ extern bool process_exists(HANDLE);
 
 #else
 extern int run_program(
-    const char* path, const char* cdir, int argc, char *const argv[], double, int&
+    const char* dir, const char* file, int argc, char *const argv[], double, int&
 );
 extern void kill_program(int);
 extern int get_exit_status(int);

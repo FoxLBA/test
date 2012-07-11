@@ -3,17 +3,27 @@
 #include "filesys.h"
 #include "assimilator_plankton.h"
 
+#include "plankton_crypt.h"
+
 using std::string;
 
 vector< vector<string> > result_file_names;
 
 int process_output(task_t task) {
     char output_filename[65535];
+    char preview_filename[65534];
     char command[65535];
-
+    int retval;
+/*
+    //decrypt
+    for (unsigned int i = 0; i < task.size; i++) {
+        log_messages.printf(MSG_NORMAL, "Decrypting video file: %s\n", result_file_names[i][0].c_str());
+        decrypt_file(result_file_names[i][0].c_str());
+    }
+*/
     // Формирование имени итогового выходного файла
     //
-    sprintf(output_filename, "%s/%s_%d_%d.%s", config.project_path("tmp/%s/holograms", task.login), task.name, task.id, task.timestamp, task.extension);
+    sprintf(output_filename, "%s/result_%s.%s", config.project_path("results/%s", task.login), task.name, task.extension);
     log_messages.printf(MSG_NORMAL, "output_filename: %s\n", output_filename);
     sprintf(command, "mencoder -msglevel all=1 -oac copy -ovc copy -o %s", output_filename);
     // Открывать результаты и доклеивать в итоговый файл
@@ -22,18 +32,31 @@ int process_output(task_t task) {
         sprintf(command, "%s %s", command, result_file_names[i][0].c_str());
     }
     log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
-    return system(command);
+    retval=system(command);
+    if (!retval) {
+    	sprintf(preview_filename, "%s/res_%s.flv", config.project_path("tmp1/%s", task.login), task.name);
+    	log_messages.printf(MSG_NORMAL, "preview_filename: %s\n", preview_filename);
+    	sprintf(command, "ffmpeg.exe -b 200000 -i %s %s", output_filename, preview_filename);
+	log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
+	retval=system(command);
+    };
+    return retval;
 }
 
 int process_background(task_t task) {
     int retval;
     char output_filename[65535];
-
+/*
+    //decrypt
+    for (unsigned int i = 0; i < task.size; i++) {
+        log_messages.printf(MSG_NORMAL, "Decrypting background file: %s\n", result_file_names[i][1].c_str());
+        decrypt_file(result_file_names[i][1].c_str());
+    }
+*/
     // Переложить все бекграунды в папку к пользователю
     boinc_mkdir(config.project_path("tmp/%s/backgrounds", task.login));
     for (unsigned int i = 0; i < task.size; i++) {
         sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", config.project_path("tmp/%s/backgrounds", task.login), task.name, task.id, task.timestamp, i+1, task.size);
-//        boinc_make_dirs("", output_filename);
         log_messages.printf(MSG_NORMAL, "Saving background [%d] to: %s\n", i+1, output_filename);
         retval = boinc_copy(result_file_names[i][1].c_str(), output_filename);
         if (retval) {
@@ -46,7 +69,13 @@ int process_background(task_t task) {
 int process_log(task_t task) {
     int retval;
     char output_filename[65535];
-
+/*
+    //decrypt
+    for (unsigned int i = 0; i < task.size; i++) {
+        log_messages.printf(MSG_NORMAL, "Decrypting log file: %s\n", result_file_names[i][2].c_str());
+        decrypt_file(result_file_names[i][2].c_str());
+    }
+*/
     // Переложить все логи в папку к пользователю
     boinc_mkdir(config.project_path("tmp/%s/logs", task.login));
     for (unsigned int i = 0; i < task.size; i++) {

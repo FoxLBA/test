@@ -29,8 +29,13 @@
 #include <grp.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/param.h>
 #ifdef __cplusplus
 #include <string>
+#endif
+
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 1024
 #endif
 
 #endif /* !WIN32 */
@@ -50,7 +55,7 @@ extern "C" {
   extern int boinc_rmdir(const char*);
   extern void boinc_getcwd(char*);
   extern void relative_to_absolute(const char* relname, char* path);
-  extern int boinc_make_dirs(char*, char*);
+  extern int boinc_make_dirs(const char*, const char*);
   extern char boinc_failed_file[256];
   extern int is_file(const char* path);
   extern int is_dir(const char* path);

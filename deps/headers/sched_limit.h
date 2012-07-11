@@ -54,6 +54,19 @@ struct RSC_JOB_LIMIT {
     inline void register_job() {
         njobs++;
     }
+
+    inline bool any_limit() {
+        return (base_limit != 0);
+    }
+
+    void print_log(const char*);
+
+    RSC_JOB_LIMIT() {
+        base_limit = 0;
+        scaled_limit = 0;
+        njobs = 0;
+        per_proc = false;
+    }
 };
 
 struct JOB_LIMIT {
@@ -64,10 +77,10 @@ struct JOB_LIMIT {
 
     int parse(XML_PARSER&, const char* end_tag);
 
-    inline void reset(HOST& h, COPROCS& c) {
+    inline void reset(int ncpus, int ngpus) {
         total.reset(1);
-        cpu.reset(h.p_ncpus);
-        gpu.reset(c.ndevs());
+        cpu.reset(ncpus);
+        gpu.reset(ngpus);
     }
 
     inline bool exceeded(bool is_gpu) {
@@ -88,6 +101,12 @@ struct JOB_LIMIT {
             cpu.register_job();
         }
     }
+
+    inline bool any_limit() {
+        return total.any_limit() || cpu.any_limit() || gpu.any_limit();
+    }
+
+    void print_log();
 };
 
 struct JOB_LIMITS {
@@ -95,13 +114,14 @@ struct JOB_LIMITS {
     vector<JOB_LIMIT> app_limits;  // per-app limits
 
     int parse(XML_PARSER&, const char* end_tag);
+    void print_log();
 
     // called at start of each request
     //
-    inline void reset(HOST& h, COPROCS& c) {
-        project_limits.reset(h, c);
+    inline void reset(int ncpus, int ngpus) {
+        project_limits.reset(ncpus, ngpus);
         for (unsigned int i=0; i<app_limits.size(); i++) {
-            app_limits[i].reset(h, c);
+            app_limits[i].reset(ncpus, ngpus);
         }
     }
 

@@ -32,8 +32,8 @@
 // this records an app for which the user will accept work
 //
 struct APP_INFO {
-	int appid;
-	int work_available;
+    int appid;
+    int work_available;
 };
 
 // represents a resource (disk etc.) that the client may not have enough of
@@ -84,16 +84,22 @@ struct HOST_USAGE {
         peak_flops = 0;
         strcpy(cmdline, "");
     }
-    void sequential_app(double x) {
+    void sequential_app(double flops) {
         ncudas = 0;
         natis = 0;
         gpu_ram = 0;
         avg_ncpus = 1;
         max_ncpus = 1;
-        if (x <= 0) x = 1e9;
-        projected_flops = x;
-        peak_flops = x;
+        if (flops <= 0) flops = 1e9;
+        projected_flops = flops;
+        peak_flops = flops;
         strcpy(cmdline, "");
+    }
+    inline bool is_sequential_app() {
+         if (ncudas) return false;
+         if (natis) return false;
+         if (avg_ncpus != 1) return false;
+         return true;
     }
     inline int resource_type() {
         if (ncudas) {
@@ -123,13 +129,13 @@ struct HOST_USAGE {
 struct FILE_INFO {
     char name[256];
 
-    int parse(FILE*);
+    int parse(XML_PARSER&);
 };
 
 struct MSG_FROM_HOST_DESC {
     char variety[256];
     std::string msg_text;
-    int parse(FILE*);
+    int parse(XML_PARSER&);
 };
 
 // an app version from an anonymous-platform client
@@ -150,13 +156,16 @@ struct CLIENT_APP_VERSION {
         // if NULL, this record is a place-holder,
         // used to preserve array indices
 
-    int parse(FILE*);
+    int parse(XML_PARSER&);
 };
 
 // keep track of the best app_version for each app for this host
 //
 struct BEST_APP_VERSION {
     int appid;
+    bool for_64b_jobs;
+        // maintain this separately for jobs that need > 2GB RAM,
+        // in which case we can't use 32-bit apps
 
     bool present;
         // false means there's no usable version for this app
@@ -175,12 +184,24 @@ struct BEST_APP_VERSION {
 
     DB_HOST_APP_VERSION* host_app_version();
         // get the HOST_APP_VERSION, if any
-        
+
     BEST_APP_VERSION() {
         present = false;
         cavp = NULL;
         avp = NULL;
     }
+};
+
+struct SCHED_DB_RESULT : DB_RESULT {
+    // the following used by the scheduler, but not stored in the DB
+    //
+    char wu_name[256];
+    int units;      // used for granting credit by # of units processed
+    int parse_from_client(XML_PARSER&);
+    char platform_name[256];
+    BEST_APP_VERSION bav;
+
+    int write_to_client(FILE*);
 };
 
 // subset of global prefs used by scheduler
@@ -225,7 +246,7 @@ struct OTHER_RESULT {
     bool abort_if_not_started;
     int reason;     // see codes below
 
-    int parse(FILE*);
+    int parse(XML_PARSER&);
 };
 
 #define ABORT_REASON_NOT_FOUND      1
@@ -235,7 +256,7 @@ struct OTHER_RESULT {
 
 struct CLIENT_PLATFORM {
     char name[256];
-    int parse(FILE*);
+    int parse(XML_PARSER&);
 };
 
 struct PLATFORM_LIST {
@@ -255,7 +276,7 @@ struct SCHEDULER_REQUEST {
     int core_client_version;    // 10000*major + 100*minor + release
     int rpc_seqno;
     double work_req_seconds;
-		// in "normalized CPU seconds" (see work_req.php)
+        // in "normalized CPU seconds" (see work_req.php)
     double cpu_req_secs;
     double cpu_req_instances;
     double resource_share_fraction;
@@ -273,14 +294,16 @@ struct SCHEDULER_REQUEST {
     char code_sign_key[4096];
 
     std::vector<CLIENT_APP_VERSION> client_app_versions;
+
     GLOBAL_PREFS global_prefs;
     char global_prefs_source_email_hash[MD5_LEN];
 
     HOST host;      // request message is parsed into here.
                     // does NOT contain the full host record.
     COPROCS coprocs;
-    std::vector<RESULT> results;
+    std::vector<SCHED_DB_RESULT> results;
         // completed results being reported
+    std::vector<RESULT> file_xfer_results;
     std::vector<MSG_FROM_HOST_DESC> msgs_from_host;
     std::vector<FILE_INFO> file_infos;
         // sticky files reported by host for locality scheduling
@@ -305,10 +328,11 @@ struct SCHEDULER_REQUEST {
         // Don't modify user prefs or CPID
     int last_rpc_dayofyear;
     int current_rpc_dayofyear;
+    std::string client_opaque;
 
-    SCHEDULER_REQUEST();
-    ~SCHEDULER_REQUEST();
-    const char* parse(FILE*);
+    SCHEDULER_REQUEST(){};
+    ~SCHEDULER_REQUEST(){};
+    const char* parse(XML_PARSER&);
     int write(FILE*); // write request info to file: not complete
 };
 
@@ -325,6 +349,12 @@ struct DISK_LIMITS {
 //
 struct WORK_REQ {
     bool anonymous_platform;
+
+    // the following defined if anonymous platform
+    //
+    bool have_cpu_apps;
+    bool have_cuda_apps;
+    bool have_ati_apps;
 
     // Flags used by old-style scheduling,
     // while making multiple passes through the work array
@@ -344,9 +374,9 @@ struct WORK_REQ {
     bool no_cuda;
     bool no_ati;
     bool no_cpu;
-	bool allow_non_preferred_apps;
-	bool allow_beta_work;
-	std::vector<APP_INFO> preferred_apps;
+    bool allow_non_preferred_apps;
+    bool allow_beta_work;
+    std::vector<APP_INFO> preferred_apps;
 
     bool has_reliable_version;
         // whether the host has a reliable app version
@@ -426,7 +456,6 @@ struct WORK_REQ {
 
     std::vector<USER_MESSAGE> no_work_messages;
     std::vector<BEST_APP_VERSION*> best_app_versions;
-    std::vector<BEST_APP_VERSION*> all_best_app_versions;
     std::vector<DB_HOST_APP_VERSION> host_app_versions;
     std::vector<DB_HOST_APP_VERSION> host_app_versions_orig;
 
@@ -448,11 +477,7 @@ struct WORK_REQ {
     void add_no_work_message(const char*);
     void get_job_limits();
 
-    ~WORK_REQ() {
-        for (unsigned int i=0; i<all_best_app_versions.size(); i++) {
-            delete all_best_app_versions[i];
-        }
-    }
+    ~WORK_REQ() {}
 };
 
 // NOTE: if any field requires initialization,
@@ -476,7 +501,7 @@ struct SCHEDULER_REPLY {
     std::vector<APP> apps;
     std::vector<APP_VERSION> app_versions;
     std::vector<WORKUNIT>wus;
-    std::vector<RESULT>results;
+    std::vector<SCHED_DB_RESULT>results;
     std::vector<std::string>result_acks;
     std::vector<std::string>result_aborts;
     std::vector<std::string>result_abort_if_not_starteds;
@@ -486,6 +511,9 @@ struct SCHEDULER_REPLY {
     char code_sign_key_signature[4096];
     bool send_msg_ack;
     bool project_is_down;
+    std::vector<APP_VERSION>old_app_versions;
+        // superceded app versions that we consider using because of
+        // homogeneous app version.
 
     SCHEDULER_REPLY();
     ~SCHEDULER_REPLY();
@@ -493,7 +521,7 @@ struct SCHEDULER_REPLY {
     void insert_app_unique(APP&);
     void insert_app_version_unique(APP_VERSION&);
     void insert_workunit_unique(WORKUNIT&);
-    void insert_result(RESULT&);
+    void insert_result(SCHED_DB_RESULT&);
     void insert_message(const char* msg, const char* prio);
     void insert_message(USER_MESSAGE&);
     void set_delay(double);
@@ -502,6 +530,7 @@ struct SCHEDULER_REPLY {
 extern SCHEDULER_REQUEST* g_request;
 extern SCHEDULER_REPLY* g_reply;
 extern WORK_REQ* g_wreq;
+extern double capped_host_fpops();
 
 static inline void add_no_work_message(const char* m) {
     g_wreq->add_no_work_message(m);
@@ -515,5 +544,9 @@ extern void write_host_app_versions();
 
 extern DB_HOST_APP_VERSION* gavid_to_havp(int gavid);
 extern DB_HOST_APP_VERSION* quota_exceeded_version();
+
+inline bool is_64b_platform(const char* name) {
+    return (strstr(name, "64") != NULL);
+}
 
 #endif

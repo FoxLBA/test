@@ -8,5 +8,5 @@
 #include "sched_msgs.h"
 #include "str_util.h"
 
-extern int encrypt_file(char *infile);
-extern int decrypt_file(char *infile);
+extern int encrypt_file(const char *infile);
+extern int decrypt_file(const char *infile);

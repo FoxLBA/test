@@ -13,7 +13,7 @@
 #include <my_global.h>
 #include <mysql.h>
 
-#include "plankton_crypt.h"
+#include "plankton.h"
 
 #define REPLICATION_FACTOR 1
 #define SLEEP_INTERVAL 10
@@ -41,12 +41,13 @@ MYSQL_RES *result;
 MYSQL_ROW row;
 MYSQL_FIELD *field;
 
-char *db_taskID;
-char *db_login;
-char *db_filename;
-char *db_background;
-char *db_par1;
-char *db_par2;
+char* db_taskID;
+char* db_login;
+char* db_filename;
+char* db_background;
+char* db_par1;
+char* db_par2;
+char* db_localID;
 
 char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
@@ -58,13 +59,12 @@ int split_input(const char *db_login, const char *db_filename) {
 
     log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
     // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "%s/%s/holograms/%s", config.project_path("user"), db_login, db_filename); //updated
+    sprintf(full_input_filename, "\"%s/%s/holograms/%s\"", source_path, db_login, db_filename);
     log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
 
     // Формирование имени папки для нарезок
     //
-//    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4); //FIXME
-    sprintf(buff, "%s/%s/holograms/%s", config.project_path("tmp"), db_login, db_filename);
+    sprintf(buff, "%s/%s/holograms/%s", config.project_path("results"), db_login, db_filename);
     strncpy(input_dir_string, buff, strlen(buff)-4);  //FIXME
 
     log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
@@ -91,7 +91,7 @@ int process_input(const char *input_filename, const char *db_filename) {
     //
     // Имя воркюнита
     sscanf(db_filename, "%[^.].%[^.]", basename, extension);
-    sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
+    sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, db_localID, timestamp, current_part, total_parts, extension);
     config.download_path(name, newname);
 
     sprintf(oldname, "%s/%s", input_dir_string, input_filename);
@@ -107,12 +107,12 @@ int process_input(const char *input_filename, const char *db_filename) {
         if (retval)
             log_messages.printf(MSG_CRITICAL, "Error [%d] removing file %s\n", retval, oldname);
     }
-
+/*
     // encrypt file
     if (encrypt_file(newname) == 0) {
         log_messages.printf(MSG_NORMAL, "File succesfully encrypted\n");
     }
-
+*/
     strcpy(wu.name, name);
     strcpy(infiles[0], name);
     for (int i=0; i<3; i++) {
@@ -133,19 +133,19 @@ int process_background(char *filename) {
     sscanf(filename, "%[^.].%[^.]", basename, extension);
 
     // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/backgrounds/%s", config.project_path("user"), db_login, filename);
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s", source_path, db_login, filename);
     log_messages.printf(MSG_NORMAL, "From full background path: %s\n", full_input_filename);
     sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
 
     config.download_path(outname, path);
     log_messages.printf(MSG_NORMAL, "To full background path: %s\n", path);
     boinc_copy(full_input_filename, path);
-
+/*
     // encrypt background
     if (encrypt_file(path) == 0) {
         log_messages.printf(MSG_NORMAL, "Background succesfully encrypted\n");
     }
-
+*/
     strcpy(infiles[1], outname);
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
@@ -189,14 +189,14 @@ int process_config(const char *par1, const char *par2) {
     }
 
     // Запись конфига. Возможно потребуется замена path на filename
-    fprintf(configfile, "Filename=%s\n[Main parameters]\n%s\n\n[Search parameters]\n%s", path, in_par1, in_par2);
+    fprintf(configfile, "[Main parameters]\n%s\nmaxFr=100000\n\n[Search parameters]\n%s", in_par1, in_par2); //FIXME maxFr=100000
     fclose(configfile);
-
+/*
     // encrypt config
     if (encrypt_file(path) == 0) {
         log_messages.printf(MSG_NORMAL, "Configfile succesfully encrypted\n");
     }
-
+*/
     strcpy(infiles[2], filename);
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
@@ -218,7 +218,7 @@ int make_job(char *db_taskID) {
     wu.rsc_fpops_est = 1e15;
     wu.rsc_fpops_bound = 1e17;
     wu.rsc_memory_bound = 1e8;
-    wu.rsc_disk_bound = 1e8;
+    wu.rsc_disk_bound = 1e10;
     wu.delay_bound = 86400;
     wu.min_quorum = REPLICATION_FACTOR;
     wu.target_nresults = REPLICATION_FACTOR;
@@ -240,7 +240,7 @@ int make_job(char *db_taskID) {
 }
 
 int st1_count() {  //FIXME
-    mysql_query(conn, "select count(taskID) from task where status='1'");  //tasks->task
+    mysql_query(conn, "select count(taskID) from task where status='1' AND del<>'1'");  //tasks->task
     result = mysql_store_result(conn);
     row = mysql_fetch_row(result);
     log_messages.printf(MSG_NORMAL, "Tasks currently running: %s\n", row[0]);
@@ -281,7 +281,8 @@ void main_loop() {
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "select taskID, login, filename, background, par1, par2 from task inner join user on uid=id where status = '2' and del <> '1' order by taskID limit %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
+            //sprintf(buff, "select taskID, login, hologram, background, par1, par2 from task inner join user on uid=id where status = '2' and del <> '1' and hologram <> '' order by taskID limit %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+            sprintf(buff, "select taskID, login, hologram, background, par1, par2, localID from task inner join user on uid=id where status = '2' and del <> '1' and hologram <> '' order by taskID limit %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
@@ -294,6 +295,7 @@ void main_loop() {
                 db_background = row[3];
                 db_par1 =       row[4];
                 db_par2 =       row[5];
+                db_localID =    row[6]; //XXXXXXXXXXXXXXXX
 
                 total_parts = split_input(db_login, db_filename);
 
@@ -303,7 +305,7 @@ void main_loop() {
                 while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
                     input_vector.push_back(input_filename);
                 }
-                sort (input_vector.begin(), input_vector.end());
+                sort(input_vector.begin(), input_vector.end());
 
                 timestamp = time(0);
                 current_part = 0;
@@ -384,9 +386,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    retval = boinc_db.open(
-        config.db_name, config.db_host, config.db_user, config.db_passwd
-    );
+    retval = boinc_db.open(config.db_name, config.db_host, config.db_user, config.db_passwd);
     if (retval) {
         log_messages.printf(MSG_CRITICAL, "can't open db\n");
         exit(1);
@@ -407,8 +407,8 @@ int main(int argc, char** argv) {
         exit(1);
     }
     // подключение к БД dims
-    if (mysql_real_connect(conn, "127.0.0.1", "boinc", "2011$bOiNc", "dihm1", 3313, NULL, 0) == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+    if (mysql_real_connect(conn, "127.0.0.1", "boincadm", "password!stronk!", "dihm1", 0, NULL, 0) == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error dihm1 %u: %s\n", mysql_errno(conn), mysql_error(conn));
         exit(1);
     }
     // инициализация подключения к БД нижнего уровня
@@ -418,8 +418,8 @@ int main(int argc, char** argv) {
         exit(1);
     }
     // подключение к БД нижнего уровня
-    if (mysql_real_connect(downlevel, "localhost", "root", "password!stronk!", "boinc_test", 0, NULL, 0) == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
+    if (mysql_real_connect(downlevel, "127.0.0.1", "boincadm", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error plankton %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
         exit(1);
     }
 

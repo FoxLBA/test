@@ -1,6 +1,6 @@
 #include "plankton_crypt.h"
 
-int encrypt_file(char *infile) {
+int encrypt_file(const char *infile) {
     int retval;
     unsigned char key[16]="qwertyuiopasdfg", IV[16]="1234567890ABCDE", buffer[512];
     symmetric_CTR ctr;
@@ -15,33 +15,33 @@ int encrypt_file(char *infile) {
     if (cipher == NULL) {log_messages.printf(MSG_CRITICAL, "Error on cipher file\n"); exit (1);}
 
     /* register twofish first */
-    if (register_cipher (&twofish_desc) == -1) {
+    if (register_cipher(&twofish_desc) == -1) {
         log_messages.printf(MSG_CRITICAL, "Error registering cipher\n");
         return -1;
     }
 
-    if ((err = ctr_start (find_cipher("twofish"), /* index of desired cipher */
-                      IV,                     /* the initial vector */
-                      key,                    /* the secret key */
-                      16,                     /* length of secret key (16 bytes) */
-                      0,                      /* 0 == default # of rounds */
-                CTR_COUNTER_LITTLE_ENDIAN,    /* Little endian counter */
-                      &ctr)                   /* where to store the CTR state */
+    if ((err = ctr_start(find_cipher("twofish"), /* index of desired cipher */
+                      IV,                        /* the initial vector */
+                      key,                       /* the secret key */
+                      16,                        /* length of secret key (16 bytes) */
+                      0,                         /* 0 == default # of rounds */
+                CTR_COUNTER_LITTLE_ENDIAN,       /* Little endian counter */
+                      &ctr)                      /* where to store the CTR state */
     ) != CRYPT_OK) {
         log_messages.printf(MSG_CRITICAL, "ctr_start error: %s\n", error_to_string (err));
         return -1;
     }
     // Encrypt
     while (numbytes = fread(buffer, 1, sizeof(buffer), input)) {
-        if ((err = ctr_encrypt (buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
+        if ((err = ctr_encrypt(buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
             log_messages.printf(MSG_CRITICAL, "ctr_encrypt error: %s\n", error_to_string (err));
             return -1;
         }
         fwrite(buffer, 1, numbytes, cipher);
     }
     /* terminate the stream */
-    if ((err = ctr_done (&ctr)) != CRYPT_OK) {
-        log_messages.printf(MSG_CRITICAL, "ctr_done error: %s\n", error_to_string (err));
+    if ((err = ctr_done(&ctr)) != CRYPT_OK) {
+        log_messages.printf(MSG_CRITICAL, "ctr_done error: %s\n", error_to_string(err));
         return -1;
     }
     // rename
@@ -57,18 +57,19 @@ int encrypt_file(char *infile) {
     return 0;
 }
 
-int decrypt_file(char *infile) {
+int decrypt_file(const char *infile) {
     unsigned char key[16]="qwertyuiopasdfg", IV[16]="1234567890ABCDE", buffer[512];
     symmetric_CTR ctr;
     int err, numbytes;
     int retval;
 
     FILE* input = fopen(infile, "rb");
+    log_messages.printf(MSG_NORMAL, "Decrypting file: %s\n", infile);
     if (input == NULL) {log_messages.printf(MSG_CRITICAL, "Error on input file\n"); exit (1);}
     FILE* output = fopen("cipher.bin", "wb");
     if (output == NULL) {log_messages.printf(MSG_CRITICAL, "Error on output file\n"); exit (1);}
 
-    if (register_cipher (&twofish_desc) == -1) {
+    if (register_cipher(&twofish_desc) == -1) {
         log_messages.printf(MSG_CRITICAL, "Error registering cipher\n");
         return -1;
     }
@@ -83,7 +84,7 @@ int decrypt_file(char *infile) {
                           &ctr)                   /* where to store the CTR state */
       ) != CRYPT_OK)
     {
-      log_messages.printf(MSG_CRITICAL, "ctr_start error: %s\n", error_to_string (err));
+      log_messages.printf(MSG_CRITICAL, "ctr_start error: %s\n", error_to_string(err));
       return -1;
     }
 
@@ -92,21 +93,21 @@ int decrypt_file(char *infile) {
                        16,      /* the IV is 16 bytes long */
                        &ctr)    /* the ctr state we wish to modify */
     )!= CRYPT_OK) {
-        log_messages.printf(MSG_CRITICAL, "ctr_setiv error: %s\n", error_to_string (err));
+        log_messages.printf(MSG_CRITICAL, "ctr_setiv error: %s\n", error_to_string(err));
         return -1;
     }
 
     while (numbytes = fread(buffer, 1, sizeof(buffer), input)) {
-        if ((err = ctr_decrypt (buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
-            log_messages.printf(MSG_CRITICAL, "ctr_decrypt error: %s\n", error_to_string (err));
+        if ((err = ctr_decrypt(buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
+            log_messages.printf(MSG_CRITICAL, "ctr_decrypt error: %s\n", error_to_string(err));
             return -1;
         }
         fwrite(buffer, 1, numbytes, output);
     }
 
     /* terminate the stream */
-    if ((err = ctr_done (&ctr)) != CRYPT_OK) {
-        log_messages.printf(MSG_CRITICAL, "ctr_done error: %s\n", error_to_string (err));
+    if ((err = ctr_done(&ctr)) != CRYPT_OK) {
+        log_messages.printf(MSG_CRITICAL, "ctr_done error: %s\n", error_to_string(err));
         return -1;
     }
     // rename

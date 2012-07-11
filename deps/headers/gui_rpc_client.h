@@ -17,6 +17,9 @@
 
 // a C++ interface to BOINC GUI RPC
 
+#ifndef _GUI_RPC_CLIENT_H_
+#define _GUI_RPC_CLIENT_H_
+
 #if !defined(_WIN32) || defined (__CYGWIN__)
 #include <cstdio>
 #include <string>
@@ -34,13 +37,15 @@
 #include "hostinfo.h"
 #include "common_defs.h"
 #include "notice.h"
+#include "network.h"
+#include "cc_config.h"
 
 struct GUI_URL {
     std::string name;
     std::string description;
     std::string url;
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
 };
 
@@ -53,7 +58,7 @@ struct DAILY_STATS {
     double host_expavg_credit;
     double day;
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
 };
 
 
@@ -123,16 +128,12 @@ public:
     double download_backoff;
     double upload_backoff;
 
-    double cpu_short_term_debt;
-    double cpu_long_term_debt;
+    double sched_priority;
+
     double cpu_backoff_time;
     double cpu_backoff_interval;
-    double cuda_debt;
-    double cuda_short_term_debt;
     double cuda_backoff_time;
     double cuda_backoff_interval;
-    double ati_debt;
-    double ati_short_term_debt;
     double ati_backoff_time;
     double ati_backoff_interval;
     double duration_correction_factor;
@@ -158,6 +159,7 @@ public:
     bool no_cpu_pref;
     bool no_cuda_pref;
     bool no_ati_pref;
+    char venue[256];
 
     // NOTE: if you add any data items above,
     // update parse(), and clear() to include them!!
@@ -165,7 +167,7 @@ public:
     PROJECT();
     ~PROJECT();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
     void print_disk_usage();
     void clear();
@@ -184,7 +186,7 @@ public:
     APP();
     ~APP();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
     void clear();
 };
@@ -193,14 +195,21 @@ class APP_VERSION {
 public:
     char app_name[256];
     int version_num;
+    char platform[64];
     char plan_class[64];
+    double avg_ncpus;
+    double ncudas;
+    double natis;
+    double gpu_ram;
+    double flops;
     APP* app;
     PROJECT* project;
 
     APP_VERSION();
     ~APP_VERSION();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
+    int parse_coproc(XML_PARSER&);
     void print();
     void clear();
 };
@@ -220,7 +229,7 @@ public:
     WORKUNIT();
     ~WORKUNIT();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
     void clear();
 };
@@ -246,7 +255,8 @@ public:
     bool suspended_via_gui;
     bool project_suspended_via_gui;
     bool coproc_missing;
-    bool gpu_mem_wait;
+    bool scheduler_wait;
+    bool network_wait;
 
     // the following defined if active
     bool active_task;
@@ -262,12 +272,11 @@ public:
     double working_set_size_smoothed;
     double estimated_cpu_time_remaining;
         // actually, estimated elapsed time remaining
-    bool supports_graphics;
-    int graphics_mode_acked;
     bool too_large;
     bool needs_shmem;
     bool edf_scheduled;
     char graphics_exec_path[512];
+    char web_graphics_url[256];
     char slot_path[512];
         // only present if graphics_exec_path is
     char resources[256];
@@ -280,7 +289,7 @@ public:
     RESULT();
     ~RESULT();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
     void clear();
 };
@@ -291,9 +300,9 @@ public:
     std::string project_url;
     std::string project_name;
     double nbytes;
-    bool generated_locally;
     bool uploaded;
-    bool upload_when_present;
+    bool is_upload;
+    bool generated_locally;     // deprecated; for compatibility w/ old clients
     bool sticky;
     bool pers_xfer_active;
     bool xfer_active;
@@ -312,7 +321,7 @@ public:
     FILE_TRANSFER();
     ~FILE_TRANSFER();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
     void clear();
 };
@@ -328,7 +337,7 @@ public:
     MESSAGE();
     ~MESSAGE();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
     void clear();
 };
@@ -352,7 +361,7 @@ public:
     GR_PROXY_INFO();
     ~GR_PROXY_INFO();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void print();
     void clear();
 };
@@ -368,25 +377,25 @@ public:
         // platforms supported by client
     GLOBAL_PREFS global_prefs;  // working prefs, i.e. network + override
     VERSION_INFO version_info;  // populated only if talking to pre-5.6 CC
-    bool executing_as_daemon;   // true if Client is running as a service / daemon
-    bool have_cuda;
-    bool have_ati;
+    bool executing_as_daemon;   // true if client is running as a service / daemon
     HOST_INFO host_info;
+    bool have_nvidia;           // redundant; include for compat (set by <have_cuda/>)
+    bool have_ati;              // redundant; include for compat
 
     CC_STATE();
     ~CC_STATE();
 
-    PROJECT* lookup_project(char* url);
-    APP* lookup_app(PROJECT*, char* name);
+    PROJECT* lookup_project(const char* url);
+    APP* lookup_app(PROJECT*, const char* name);
     APP_VERSION* lookup_app_version(PROJECT*, APP*, int, char* plan_class);
     APP_VERSION* lookup_app_version_old(PROJECT*, APP*, int);
-    WORKUNIT* lookup_wu(PROJECT*, char* name);
-    RESULT* lookup_result(PROJECT*, char* name);
-    RESULT* lookup_result(char* url, char* name);
+    WORKUNIT* lookup_wu(PROJECT*, const char* name);
+    RESULT* lookup_result(PROJECT*, const char* name);
+    RESULT* lookup_result(const char* url, const char* name);
 
     void print();
     void clear();
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
 };
 
 class PROJECTS {
@@ -460,15 +469,6 @@ public:
     void clear();
 };
 
-struct DISPLAY_INFO {
-    char window_station[256];   // windows
-    char desktop[256];          // windows
-    char display[256];          // X11
-
-    DISPLAY_INFO();
-    void print_str(char*);
-};
-
 struct ACCT_MGR_INFO {
     std::string acct_mgr_name;
     std::string acct_mgr_url;
@@ -479,7 +479,7 @@ struct ACCT_MGR_INFO {
     ACCT_MGR_INFO();
     ~ACCT_MGR_INFO(){}
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void clear();
 };
 
@@ -490,7 +490,7 @@ struct PROJECT_ATTACH_REPLY {
     PROJECT_ATTACH_REPLY();
     ~PROJECT_ATTACH_REPLY(){}
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void clear();
 };
 
@@ -501,7 +501,7 @@ struct ACCT_MGR_RPC_REPLY {
     ACCT_MGR_RPC_REPLY();
     ~ACCT_MGR_RPC_REPLY(){}
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void clear();
 };
 
@@ -514,7 +514,7 @@ struct PROJECT_INIT_STATUS {
     PROJECT_INIT_STATUS();
     ~PROJECT_INIT_STATUS(){}
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void clear();
 };
 
@@ -541,7 +541,7 @@ struct PROJECT_CONFIG {
     PROJECT_CONFIG();
     ~PROJECT_CONFIG();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void clear();
     void print();
 };
@@ -568,7 +568,7 @@ struct ACCOUNT_OUT {
     ACCOUNT_OUT();
     ~ACCOUNT_OUT();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void clear();
     void print();
 };
@@ -595,7 +595,7 @@ struct CC_STATUS {
     CC_STATUS();
     ~CC_STATUS();
 
-    int parse(MIOFILE&);
+    int parse(XML_PARSER&);
     void clear();
     void print();
 };
@@ -606,18 +606,32 @@ struct SIMPLE_GUI_INFO {
     void print();
 };
 
-class RPC_CLIENT {
-public:
+struct DAILY_XFER {
+    int when;
+    double up;
+    double down;
+
+    int parse(XML_PARSER&);
+};
+
+struct DAILY_XFER_HISTORY {
+    std::vector <DAILY_XFER> daily_xfers;
+    int parse(XML_PARSER&);
+    void print();
+};
+
+struct RPC_CLIENT {
     int sock;
     double start_time;
     double timeout;
     bool retry;
-    sockaddr_in addr;
+    sockaddr_storage addr;
 
     int send_request(const char*);
     int get_reply(char*&);
     RPC_CLIENT();
     ~RPC_CLIENT();
+    int get_ip_addr(const char* host, int port);
     int init(const char* host, int port=0);
     int init_asynch(
         const char* host, double timeout, bool retry, int port=GUI_RPC_PORT
@@ -642,10 +656,6 @@ public:
     int get_project_status(PROJECTS&);
     int get_all_projects_list(ALL_PROJECTS_LIST&);
     int get_disk_usage(DISK_USAGE&);
-    int show_graphics(
-        const char* project, const char* result_name, int graphics_mode,
-        DISPLAY_INFO&
-    );
     int project_op(PROJECT&, const char* op);
     int set_run_mode(int mode, double duration);
         // if duration is zero, change is permanent.
@@ -704,12 +714,15 @@ public:
     int set_global_prefs_override(std::string&);
     int get_global_prefs_override_struct(GLOBAL_PREFS&, GLOBAL_PREFS_MASK&);
     int set_global_prefs_override_struct(GLOBAL_PREFS&, GLOBAL_PREFS_MASK&);
-    int set_debts(std::vector<PROJECT>);
+    int get_cc_config(CONFIG& config, LOG_FLAGS& log_flags);
+    int set_cc_config(CONFIG& config, LOG_FLAGS& log_flags);
+    int get_daily_xfer_history(DAILY_XFER_HISTORY&);
 };
 
 struct RPC {
     char* mbuf;
     MIOFILE fin;
+    XML_PARSER xp;
     RPC_CLIENT* rpc_client;
 
     RPC(RPC_CLIENT*);
@@ -760,7 +773,7 @@ extern int		freelocale(locale_t) __attribute__((weak_import));
 extern locale_t	newlocale(int, __const char *, locale_t) __attribute__((weak_import));
 extern locale_t	uselocale(locale_t) __attribute__((weak_import));
 
- struct SET_LOCALE {
+struct SET_LOCALE {
     locale_t old_locale, RPC_locale;
     std::string locale;
     inline SET_LOCALE() {
@@ -788,3 +801,5 @@ struct SET_LOCALE {
 #endif
 
 extern int read_gui_rpc_password(char*);
+
+#endif /* _GUI_RPC_CLIENT_H_ */

@@ -43,17 +43,26 @@ extern void get_log_path(char*, const char*);
 //
 extern int dir_hier_path(
     const char* filename, const char* root, int fanout,
-	char* result, bool create=false
+    char* result, bool create=false
 );
 
 // convert filename to URL in a hierarchical directory system
 //
 extern int dir_hier_url(
     const char* filename, const char* root, int fanout,
-	char* result
+    char* result
 );
 
 extern void compute_avg_turnaround(HOST& host, double turnaround);
+
+struct PERF_INFO {
+    double host_fpops_mean;
+    double host_fpops_stddev;
+    double host_fpops_50_percentile;
+    double host_fpops_95_percentile;
+
+    int get_from_db();
+};
 
 // returns zero if we get lock on file with file descriptor fd.
 // returns < 0 if error
@@ -79,6 +88,8 @@ inline int generalized_app_version_id(int avid, int appid) {
 // return true if x is -y or --y (for argv processing)
 //
 extern bool is_arg(const char*, const char*);
+
+extern bool app_plan_uses_gpu(const char* plan_class);
 
 #ifdef GCL_SIMULATOR
 extern void simulator_signal_handler(int signum);
