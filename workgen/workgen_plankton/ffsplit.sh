@@ -19,7 +19,7 @@ minutes=${duration:3:2}
 seconds=${duration:6:2}
 #echo $hours $minutes $seconds
 
-length=$((hours*1440 + minutes*60 + seconds))
+length=$((10#hours*1440 + 10#minutes*60 + 10#seconds))
 #echo $length
 
 mkdir -p "$path/$basename"
