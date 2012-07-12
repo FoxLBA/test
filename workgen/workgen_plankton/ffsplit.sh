@@ -19,15 +19,16 @@ minutes=${duration:3:2}
 seconds=${duration:6:2}
 #echo $hours $minutes $seconds
 
-length=$((10#hours*1440 + 10#minutes*60 + 10#seconds))
+length=$((10#$hours * 1440 + 10#$minutes * 60 + 10#$seconds))
 #echo $length
 
 mkdir -p "$path/$basename"
 prefix=0
-for offset in $(seq 0 10 $length); do
+step=10
+for offset in $(seq 0 $step $length); do
     if [ $offset -ne $length ]; then
         ((prefix++))
-        ffmpeg -loglevel quiet -i "$input" -t 10 -sameq -ss $offset "$path/$basename/$basename-$prefix.$extension"
+        ffmpeg -loglevel quiet -i "$input" -t $step -sameq -ss $offset "$path/$basename/$basename-$prefix.$extension"
     fi
 done
 exit $prefix
