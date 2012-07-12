@@ -1,4 +1,4 @@
-#include "plankton_crypt.h"
+#include "plankton.h"
 
 int encrypt_file(const char *infile) {
     int retval;

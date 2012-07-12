@@ -10,7 +10,7 @@ workgen/workgen_ffmpeg/test_workgen_ffmpeg
 workgen/workgen_text/test_workgen_text
 workgen/workgen_plankton/workgen_plankton
 
-deps/headers/plankton_crypt.h
+deps/headers/plankton.h
 
 
 .*

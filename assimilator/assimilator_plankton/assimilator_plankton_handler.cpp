@@ -3,7 +3,7 @@
 #include "filesys.h"
 #include "assimilator_plankton.h"
 
-#include "plankton_crypt.h"
+#include "plankton.h"
 
 using std::string;
 

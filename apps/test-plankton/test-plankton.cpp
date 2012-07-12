@@ -3,7 +3,7 @@
 #include "filesys.h"
 #include "boinc_api.h"
 
-#include "plankton_crypt.h"
+#include "plankton.h"
 
 #define INPUT_FILENAME "in"
 #define OUTPUT_FILENAME "out"
