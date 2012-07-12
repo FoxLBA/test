@@ -32,7 +32,7 @@ int encrypt_file(const char *infile) {
         return -1;
     }
     // Encrypt
-    while (numbytes = fread(buffer, 1, sizeof(buffer), input)) {
+    while ((numbytes = fread(buffer, 1, sizeof(buffer), input)) != 0) {
         if ((err = ctr_encrypt(buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
             log_messages.printf(MSG_CRITICAL, "ctr_encrypt error: %s\n", error_to_string (err));
             return -1;
@@ -97,7 +97,7 @@ int decrypt_file(const char *infile) {
         return -1;
     }
 
-    while (numbytes = fread(buffer, 1, sizeof(buffer), input)) {
+    while ((numbytes = fread(buffer, 1, sizeof(buffer), input)) != 0) {
         if ((err = ctr_decrypt(buffer, buffer, sizeof(buffer), &ctr)) != CRYPT_OK) {
             log_messages.printf(MSG_CRITICAL, "ctr_decrypt error: %s\n", error_to_string(err));
             return -1;
