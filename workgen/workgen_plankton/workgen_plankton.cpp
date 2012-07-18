@@ -59,13 +59,13 @@ int split_input(const char *db_login, const char *db_filename) {
 
     log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
     // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "\"%s/%s/holograms/%s\"", source_path, db_login, db_filename);
+    sprintf(full_input_filename, "%s/%s/holograms/%s", source_path, db_login, db_filename);
     log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
 
     // Формирование имени папки для нарезок
     //
-    sprintf(buff, "%s/%s/holograms/%s", config.project_path("results"), db_login, db_filename);
-    strncpy(input_dir_string, buff, strlen(buff)-4);  //FIXME
+    // sprintf(buff, "%s/%s/holograms/%s", source_path, db_login, db_filename);
+    strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);  //FIXME
 
     log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
     log_messages.printf(MSG_NORMAL, "input_dir_string: %s\n", input_dir_string);
@@ -302,6 +302,7 @@ void main_loop() {
                 // Открыть папку для сканирования нарезок
                 DIRREF input_dir = dir_open(input_dir_string);
                 vector<string> input_vector;
+                log_messages.printf(MSG_CRITICAL, "Scanning directory %s for files\n", input_dir_string);
                 while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
                     input_vector.push_back(input_filename);
                 }

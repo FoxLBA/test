@@ -8,7 +8,7 @@
 #include "sched_msgs.h"
 #include "str_util.h"
 
-const char* source_path="/mnt/boinc/user";
+const char* source_path="/mnt/boinc/source";
 const char* result_path="/mnt/boinc/results";
 
 extern int encrypt_file(const char *infile);
