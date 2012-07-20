@@ -23,7 +23,7 @@ int process_output(task_t task) {
 */
     // Формирование имени итогового выходного файла
     //
-    sprintf(output_filename, "%s/result_%s.%s", config.project_path("results/%s", task.login), task.name, task.extension);
+    sprintf(output_filename, "%s/%s/result_%s.%s", result_path, task.login, task.name, task.extension);
     log_messages.printf(MSG_NORMAL, "output_filename: %s\n", output_filename);
     sprintf(command, "mencoder -msglevel all=1 -oac copy -ovc copy -o %s", output_filename);
     // Открывать результаты и доклеивать в итоговый файл
@@ -33,19 +33,20 @@ int process_output(task_t task) {
     }
     log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
     retval=system(command);
-    if (!retval) {
-    	sprintf(preview_filename, "%s/res_%s.flv", config.project_path("tmp1/%s", task.login), task.name);
-    	log_messages.printf(MSG_NORMAL, "preview_filename: %s\n", preview_filename);
-    	sprintf(command, "ffmpeg.exe -b 200000 -i %s %s", output_filename, preview_filename);
-	log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
-	retval=system(command);
-    };
+    // if (!retval) {
+    //     sprintf(preview_filename, "%s/res_%s.flv", config.project_path("tmp1/%s", task.login), task.name);
+    //     log_messages.printf(MSG_NORMAL, "preview_filename: %s\n", preview_filename);
+    //     sprintf(command, "ffmpeg.exe -b 200000 -i %s %s", output_filename, preview_filename);
+    // log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
+    // retval=system(command);
+    // };
     return retval;
 }
 
 int process_background(task_t task) {
     int retval;
     char output_filename[65535];
+    char output_dir[65535];
 /*
     //decrypt
     for (unsigned int i = 0; i < task.size; i++) {
@@ -54,9 +55,11 @@ int process_background(task_t task) {
     }
 */
     // Переложить все бекграунды в папку к пользователю
-    boinc_mkdir(config.project_path("tmp/%s/backgrounds", task.login));
+    sprintf(output_dir, "%s/%s/backgrounds", result_path, task.login);
+    // boinc_mkdir(config.project_path("tmp/%s/backgrounds", task.login));
+    boinc_mkdir(output_dir);
     for (unsigned int i = 0; i < task.size; i++) {
-        sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", config.project_path("tmp/%s/backgrounds", task.login), task.name, task.id, task.timestamp, i+1, task.size);
+        sprintf(output_filename, "%s/background_%s_%d_%d_%d_%d", output_dir, task.name, task.id, task.timestamp, i+1, task.size);
         log_messages.printf(MSG_NORMAL, "Saving background [%d] to: %s\n", i+1, output_filename);
         retval = boinc_copy(result_file_names[i][1].c_str(), output_filename);
         if (retval) {
@@ -69,6 +72,7 @@ int process_background(task_t task) {
 int process_log(task_t task) {
     int retval;
     char output_filename[65535];
+    char output_dir[65535];
 /*
     //decrypt
     for (unsigned int i = 0; i < task.size; i++) {
@@ -77,9 +81,11 @@ int process_log(task_t task) {
     }
 */
     // Переложить все логи в папку к пользователю
-    boinc_mkdir(config.project_path("tmp/%s/logs", task.login));
+    sprintf(output_dir, "%s/%s/logs", result_path, task.login);
+    // boinc_mkdir(config.project_path("tmp/%s/logs", task.login));
+    boinc_mkdir(output_dir);
     for (unsigned int i = 0; i < task.size; i++) {
-        sprintf(output_filename, "%s/log_%s_%d_%d_%d_%d", config.project_path("tmp/%s/logs", task.login), task.name, task.id, task.timestamp, i+1, task.size);
+        sprintf(output_filename, "%s/log_%s_%d_%d_%d_%d", output_dir, task.name, task.id, task.timestamp, i+1, task.size);
         log_messages.printf(MSG_NORMAL, "Saving log [%d] to: %s\n", i+1, output_filename);
         retval = boinc_copy(result_file_names[i][2].c_str(), output_filename);
         if (retval) {
