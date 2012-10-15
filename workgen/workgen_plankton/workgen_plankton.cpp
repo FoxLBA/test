@@ -133,9 +133,9 @@ int process_background(char *filename) {
     sscanf(filename, "%[^.].%[^.]", basename, extension);
 
     // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/backgrounds/%s", source_path, db_login, filename);
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s.%s", source_path, db_login, db_localID, extension);
     log_messages.printf(MSG_NORMAL, "From full background path: %s\n", full_input_filename);
-    sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, basename, timestamp, current_part, total_parts, extension);
+    sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, db_localID, timestamp, current_part, total_parts, extension);
 
     config.download_path(outname, path);
     log_messages.printf(MSG_NORMAL, "To full background path: %s\n", path);
@@ -215,10 +215,10 @@ int make_job(char *db_taskID) {
     //
     wu.appid = app.id;
     wu.batch = tid;
-    wu.rsc_fpops_est = 1e15;
-    wu.rsc_fpops_bound = 1e17;
+    wu.rsc_fpops_est = 1e12;
+    wu.rsc_fpops_bound = 1e14;
     wu.rsc_memory_bound = 1e8;
-    wu.rsc_disk_bound = 1e10;
+    wu.rsc_disk_bound = 1e11;
     wu.delay_bound = 86400;
     wu.min_quorum = REPLICATION_FACTOR;
     wu.target_nresults = REPLICATION_FACTOR;
@@ -281,7 +281,7 @@ void main_loop() {
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "select taskID, login, hologram, background, par1, par2, localID from task inner join user on uid=id where status = '2' and del <> '1' and hologram <> '' order by taskID limit %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
+            sprintf(buff, "SELECT taskID, login, hol_source, background, par1, par2, localID FROM task inner join user ON uid=id WHERE status = '2' AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
