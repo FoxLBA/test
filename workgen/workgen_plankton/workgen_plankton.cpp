@@ -26,7 +26,7 @@ using namespace std;
 //
 char* wu_template;
 DB_APP app;
-FILE *input_file;
+FILE* input_file;
 
 char full_input_filename[255];
 char input_dir_string[255];
@@ -53,9 +53,8 @@ char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
 
-int split_input(const char *db_login, const char *db_filename) {
+int split_input(const char* db_login, const char* db_filename) {
     char split[255];
-    char buff[255];
 
     log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
     // Путь до ожидающего обработки файла
@@ -78,11 +77,10 @@ int split_input(const char *db_login, const char *db_filename) {
     return system(split)>>8;
 }
 
-int process_input(const char *input_filename, const char *db_filename) {
+int process_input(const char* input_filename, const char* db_filename) {
     log_messages.printf(MSG_NORMAL, "Processing input: %s\n", input_filename);
-    char name[255];
-    char newname[255];
-    char oldname[255];
+    char output_filename[255];
+    char full_output_filename[255];
     char basename[255];
     char extension[255];
     int retval;
@@ -91,30 +89,30 @@ int process_input(const char *input_filename, const char *db_filename) {
     //
     // Имя воркюнита
     sscanf(db_filename, "%[^.].%[^.]", basename, extension);
-    sprintf(name, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, db_localID, timestamp, current_part, total_parts, extension);
-    config.download_path(name, newname);
+    sprintf(output_filename, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, db_localID, timestamp, current_part, total_parts, extension);
+    config.download_path(output_filename, full_output_filename);
 
-    sprintf(oldname, "%s/%s", input_dir_string, input_filename);
-    log_messages.printf(MSG_NORMAL, "From full filepath: %s\n", oldname);
-    log_messages.printf(MSG_NORMAL, "To full filepath: %s\n", newname);
+    sprintf(full_input_filename, "%s/%s", input_dir_string, input_filename);
+    log_messages.printf(MSG_NORMAL, "From full filepath: %s\n", full_input_filename);
+    log_messages.printf(MSG_NORMAL, "To full filepath: %s\n", full_output_filename);
 
-    retval = boinc_copy(oldname, newname);
+    retval = boinc_copy(full_input_filename, full_output_filename);
     if (retval) {
-        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file %s to %s\n", retval, oldname, newname);
+        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file %s to %s\n", retval, full_input_filename, full_output_filename);
     } else {
         log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
-        retval = boinc_delete_file(oldname);
+        retval = boinc_delete_file(full_input_filename);
         if (retval)
-            log_messages.printf(MSG_CRITICAL, "Error [%d] removing file %s\n", retval, oldname);
+            log_messages.printf(MSG_CRITICAL, "Error [%d] removing file %s\n", retval, full_input_filename);
     }
 /*
     // encrypt file
-    if (encrypt_file(newname) == 0) {
+    if (encrypt_file(full_output_filename) == 0) {
         log_messages.printf(MSG_NORMAL, "File succesfully encrypted\n");
     }
 */
-    strcpy(wu.name, name);
-    strcpy(infiles[0], name);
+    strcpy(wu.name, output_filename);
+    strcpy(infiles[0], output_filename);
     for (int i=0; i<3; i++) {
         log_messages.printf(MSG_NORMAL, "infiles[%d]=%s\n", i, infiles[i]);
     }
@@ -123,26 +121,33 @@ int process_input(const char *input_filename, const char *db_filename) {
     return 0;
 }
 
-int process_background(char *filename) {
+int process_background(char* filename) {
     log_messages.printf(MSG_NORMAL, "Processing background: %s\n", filename);
-    char path[255];
+    char full_output_filename[255];
     char outname[255];
     char basename[255];
     char extension[255];
+    int retval;
 
     sscanf(filename, "%[^.].%[^.]", basename, extension);
 
     // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/backgrounds/%s.%s", source_path, db_login, db_localID, extension);
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s.%s", source_path, db_login, basename, extension);
     log_messages.printf(MSG_NORMAL, "From full background path: %s\n", full_input_filename);
     sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, db_localID, timestamp, current_part, total_parts, extension);
 
-    config.download_path(outname, path);
-    log_messages.printf(MSG_NORMAL, "To full background path: %s\n", path);
-    boinc_copy(full_input_filename, path);
+    config.download_path(outname, full_output_filename);
+    log_messages.printf(MSG_NORMAL, "To full background path: %s\n", full_output_filename);
+
+    retval = boinc_copy(full_input_filename, full_output_filename);
+    if (retval) {
+        log_messages.printf(MSG_CRITICAL, "Error [%d] renaming file %s to %s\n", retval, full_input_filename, full_output_filename);
+    } else {
+        log_messages.printf(MSG_NORMAL, "File successfully renamed\n");
+    }
 /*
     // encrypt background
-    if (encrypt_file(path) == 0) {
+    if (encrypt_file(full_output_filename) == 0) {
         log_messages.printf(MSG_NORMAL, "Background succesfully encrypted\n");
     }
 */
@@ -154,13 +159,13 @@ int process_background(char *filename) {
     return 0;
 }
 
-int process_config(const char *par1, const char *par2) {
+int process_config(const char* par1, const char* par2) {
     char in_par1[255];
     char in_par2[255];
     strcpy(in_par1, par1);
     strcpy(in_par2, par2);
     log_messages.printf(MSG_NORMAL, "Processing config: %s %s\n", in_par1, in_par2);
-    FILE *configfile;
+    FILE* configfile;
     int i=0;
     char path[255];
     char filename[255];
@@ -208,7 +213,7 @@ int process_config(const char *par1, const char *par2) {
 
 // create one new job
 //
-int make_job(char *db_taskID) {
+int make_job(char* db_taskID) {
     int tid;
     tid = atoi(db_taskID);
     // Fill in the job parameters
@@ -248,7 +253,7 @@ int st1_count() {  //FIXME
 }
 
 int cancel_wu() {
-    char *c_task_id;
+    char* c_task_id;
     char buff[255];
     log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");   //tasks->task
     mysql_query(conn, "select taskID from task where status=3 or del=1");  //tasks->task
@@ -294,7 +299,7 @@ void main_loop() {
                 db_background   = row[3];
                 db_par1         = row[4];
                 db_par2         = row[5];
-                db_localID      = row[6]; //XXXXXXXXXXXXXXXX
+                db_localID      = row[6];
 
                 total_parts = split_input(db_login, db_filename);
 
@@ -327,7 +332,7 @@ void main_loop() {
                         retval = make_job(db_taskID);
                         if (retval) {
                             log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
-                            exit(1);
+                            exit(1); // need new "invalid" status
                         }
                         memset(infiles, 0, sizeof(infiles));
                     }
@@ -335,7 +340,7 @@ void main_loop() {
                     retval = boinc_rmdir(input_dir_string);
                     if (retval) {
                         log_messages.printf(MSG_CRITICAL, "Can't remove directory %s: %d\n", input_dir_string, retval);
-                        exit(1);
+                        exit(1); // need new "invalid" status
                     }
                     memset(input_dir_string, 0 , sizeof(input_dir_string));
 
@@ -352,7 +357,7 @@ void main_loop() {
     }
 }
 
-void usage(char *name) {
+void usage(char* name) {
     fprintf(stderr,
         "Usage: %s [OPTION]...\n\n"
         "Options:\n"
