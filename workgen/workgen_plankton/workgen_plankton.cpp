@@ -223,7 +223,7 @@ int make_job(char* db_taskID) {
     wu.rsc_fpops_est = 1e12;
     wu.rsc_fpops_bound = 1e14;
     wu.rsc_memory_bound = 1e8;
-    wu.rsc_disk_bound = 1e10;
+    wu.rsc_disk_bound = 2*1e10;
     wu.delay_bound = 86400;
     wu.min_quorum = REPLICATION_FACTOR;
     wu.target_nresults = REPLICATION_FACTOR;
