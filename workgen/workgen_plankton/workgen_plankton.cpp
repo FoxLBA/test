@@ -263,7 +263,8 @@ int cancel_wu() {
         // Ставится соответствие taskID и filename планктона воркюнитам из таблицы workunit
         // в результате имеется начальный и конечный id
         // ВАЖНО: id ву и результатов могут не совпадать!
-        sprintf(buff, "update result set server_state=5, outcome=5 where server_state=2 and batch=%s", c_task_id);
+        // sprintf(buff, "update result set server_state=5, outcome=5 where server_state=2 and batch=%s", c_task_id); // SERVER STATE FIXME
+        sprintf(buff, "update result set server_state=5, outcome=5 where batch=%s", c_task_id); // SERVER STATE FIXME
         mysql_query(downlevel, buff);
         sprintf(buff, "update workunit set error_mask=error_mask|16 where batch=%s", c_task_id);
         mysql_query(downlevel, buff);
@@ -286,7 +287,7 @@ void main_loop() {
         if (st1 < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "SELECT taskID, login, hol_source, background, par1, par2, localID FROM task inner join user ON uid=id WHERE status = '2' AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
+            sprintf(buff, "SELECT taskID, login, hol_source, bg_source, par1, par2, localID FROM task inner join user ON uid=id WHERE status = '2' AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
