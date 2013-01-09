@@ -244,19 +244,27 @@ int make_job(char* db_taskID) {
     );
 }
 
-int st1_count() {  //FIXME
-    mysql_query(conn, "select count(taskID) from task where status='1' AND del<>'1'");  //tasks->task
+int get_running_count() {  //FIXME
+    char buff[255];
+    sprintf(buff, "select count(taskID) from task where status=%d AND del<>1", PLANKTON_STATUS_IN_PROGRESS);
+    mysql_query(conn, buff);
     result = mysql_store_result(conn);
     row = mysql_fetch_row(result);
     log_messages.printf(MSG_NORMAL, "Tasks currently running: %s\n", row[0]);
     return atoi(row[0]);
 }
 
+int task_is_empty() {
+
+    return 0;
+}
+
 int cancel_wu() {
     char* c_task_id;
     char buff[255];
-    log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");   //tasks->task
-    mysql_query(conn, "select taskID from task where status=3 or del=1");  //tasks->task
+    log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");
+    sprintf(buff, "select taskID from task where status=%d or del=1", PLANKTON_STATUS_PAUSED);
+    mysql_query(conn, buff);
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result))) {
         c_task_id = row[0];
@@ -276,22 +284,27 @@ void main_loop() {
     char buff[255];
     char input_filename[255];
     int retval;
-    int st1;
+    int running_tasks;
 
     check_stop_daemons();
     // Сканируем базу каждые SLEEP_INTERVAL секунд
     //
     while (1) {
         cancel_wu();
-        st1 = st1_count();
-        if (st1 < MAX_TASKS) {  //FIXME
+        running_tasks = get_running_count();
+        if (running_tasks < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "SELECT taskID, login, hol_source, bg_source, par1, par2, localID FROM task inner join user ON uid=id WHERE status = '2' AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", MAX_TASKS-st1); //this was updated users->user, //tasks->task
+            sprintf(buff, "SELECT taskID, login, hol_source, bg_source, par1, par2, localID FROM task inner join user ON uid=id WHERE status=%d AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", PLANKTON_STATUS_WAITING_QUEUE, MAX_TASKS-running_tasks);
             mysql_query(conn, buff);
             result = mysql_store_result(conn);
             // Подсчёт количества столбцов. Пока не используется
-            //
+
+            int task_is_empty() {
+
+                return 0;
+            }//
+
             //num_fields = mysql_num_fields(result);
             while ((row = mysql_fetch_row(result))) {
                 db_taskID       = row[0];
@@ -305,8 +318,8 @@ void main_loop() {
                 total_parts = split_input(db_login, db_filename);
 
                 if (total_parts < 1) {
-                    log_messages.printf(MSG_CRITICAL, "Total parts less than 1\n");
-                    sprintf(buff,"update status=3 where taskID=%i\n",atoi(db_taskID));
+                    log_messages.printf(MSG_CRITICAL, "Total parts less than 1, pausing task\n");
+                    sprintf(buff,"update status=%d where taskID=%i\n", PLANKTON_STATUS_PAUSED, atoi(db_taskID));
                     mysql_query(conn, buff);
                 } else {
                     log_messages.printf(MSG_NORMAL, "Total parts=%i\n", total_parts);
@@ -325,11 +338,11 @@ void main_loop() {
                         current_part++;
                         wu.clear();
                         retval = process_input(input_vector[i].c_str(), db_filename);
-                        if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process input: %d\n", retval); }
+                        if (retval) { log_messages.printf(MSG_CRITICAL, "Can't process input: %d\n", retval); }
                         retval = process_background(db_background);
-                        if (retval) {log_messages.printf(MSG_CRITICAL, "Can't create process background: %d\n", retval); }
+                        if (retval) {log_messages.printf(MSG_CRITICAL, "Can't process background: %d\n", retval); }
                         retval = process_config(db_par1, db_par2);
-                        if (retval) { log_messages.printf(MSG_CRITICAL, "Can't create process config: %d\n", retval); }
+                        if (retval) { log_messages.printf(MSG_CRITICAL, "Can't process config: %d\n", retval); }
                         retval = make_job(db_taskID);
                         if (retval) {
                             log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
@@ -348,7 +361,7 @@ void main_loop() {
                     // Изменение статуса файла в БД планктон
                     //
                     log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
-                    sprintf(buff, "UPDATE task SET status=1, startDate=NOW() WHERE taskID=%s\n", db_taskID);   //tasks->task
+                    sprintf(buff, "UPDATE task SET status=%d, startDate=NOW() WHERE taskID=%s\n", PLANKTON_STATUS_IN_PROGRESS, db_taskID);
                     log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
                     mysql_query(conn, buff);
                 }
