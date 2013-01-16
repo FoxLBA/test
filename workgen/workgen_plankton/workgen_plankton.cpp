@@ -278,23 +278,32 @@ int task_is_empty(char* str) {
 }
 
 int cancel_wu() {
-    char* c_task_id;
-    char buff[255];
-    log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");
-    sprintf(buff, "select taskID from task where status=%d or del=1", PLANKTON_STATUS_PAUSED);
-    mysql_query(conn, buff);
-    result = mysql_store_result(conn);
-    while ((row = mysql_fetch_row(result))) {
-        c_task_id = row[0];
-        // Ставится соответствие taskID и filename планктона воркюнитам из таблицы workunit
-        // в результате имеется начальный и конечный id
-        // ВАЖНО: id ву и результатов могут не совпадать!
-        // sprintf(buff, "update result set server_state=5, outcome=5 where server_state=2 and batch=%s", c_task_id); // SERVER STATE FIXME
-        sprintf(buff, "update result set server_state=5, outcome=5 where batch=%s", c_task_id); // SERVER STATE FIXME
-        mysql_query(downlevel, buff);
-        sprintf(buff, "update workunit set error_mask=error_mask|16 where batch=%s", c_task_id);
-        mysql_query(downlevel, buff);
-    }
+    // char* c_task_id;
+    // char buff[255];
+    // log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");
+    // sprintf(buff, "select taskID from task where status=%d or del=1", PLANKTON_STATUS_PAUSED);
+    // mysql_query(conn, buff);
+    // result = mysql_store_result(conn);
+    // while ((row = mysql_fetch_row(result))) {
+    //     c_task_id = row[0];
+    //     // Ставится соответствие taskID и filename планктона воркюнитам из таблицы workunit
+    //     // в результате имеется начальный и конечный id
+    //     // ВАЖНО: id ву и результатов могут не совпадать!
+    //     // sprintf(buff, "update result set server_state=5, outcome=5 where server_state=2 and batch=%s", c_task_id); // SERVER STATE FIXME
+    //     sprintf(buff, "update result set server_state=5, outcome=5 where batch=%s", c_task_id); // SERVER STATE FIXME
+    //     mysql_query(downlevel, buff);
+    //     sprintf(buff, "update workunit set error_mask=error_mask|16 where batch=%s", c_task_id);
+    //     mysql_query(downlevel, buff);
+    // }
+    log_messages.printf(MSG_NORMAL, "Cleaning up paused/deleted tasks\n");
+
+    char query[]="CREATE TEMPORARY TABLE plankton.batches AS (SELECT DISTINCT batch FROM plankton.workunit WHERE batch NOT IN (SELECT taskID FROM dihm1.task) OR batch IN (SELECT taskID FROM dihm1.task WHERE status=3 OR del=1));\
+UPDATE plankton.result SET server_state=5, outcome=5  WHERE batch IN (SELECT batch FROM plankton.batches);\
+UPDATE plankton.workunit SET error_mask=error_mask|16 WHERE batch IN (SELECT batch FROM plankton.batches);\
+DROP TABLE plankton.batches;";
+
+    mysql_query(downlevel, query);
+
     return 0;
 }
 
@@ -325,7 +334,9 @@ void main_loop() {
                 db_par2         = row[5];
                 db_localID      = row[6];
 
-                if (!task_is_empty(db_par1)) {
+                if (task_is_empty(db_par1)) {
+                    log_messages.printf(MSG_NORMAL, "Skipping empty taks %s\n", db_taskID);
+                } else {
                     total_parts = split_input(db_login, db_filename);
 
                     if (total_parts < 1) {
@@ -456,7 +467,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     // подключение к БД нижнего уровня
-    if (mysql_real_connect(downlevel, "127.0.0.1", "boincadm", "password!stronk!", "plankton", 0, NULL, 0) == NULL) {
+    if (mysql_real_connect(downlevel, "127.0.0.1", "boincadm", "password!stronk!", "plankton", 0, NULL, CLIENT_MULTI_STATEMENTS) == NULL) {
         log_messages.printf(MSG_CRITICAL, "Error plankton %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
         exit(1);
     }
