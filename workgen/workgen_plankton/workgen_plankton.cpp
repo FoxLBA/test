@@ -256,13 +256,19 @@ int get_running_count() {
     return atoi(row[0]);
 }
 
-int task_is_empty(char* str) {
+int task_is_empty(const char* par1) {
 
+    char* str;
     char* token;
     char* saveptr;
     double value;
 
-    // char *str = argv[1];
+    str = (char*)malloc(strlen(par1) + 1);
+    if (str) {
+        strcpy(str, par1);
+    } else {
+        log_messages.printf(MSG_CRITICAL, "%s\n", "Unable to copy parameter string");
+    }
 
     token = strtok_r(str, "=", &saveptr);
     while (token) {
