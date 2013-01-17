@@ -35,14 +35,14 @@ int timestamp;
 int current_part = 0;
 int total_parts = 0;
 
-MYSQL *conn;
-MYSQL *downlevel;
+MYSQL *frontend_db;
+MYSQL *backend_db;
 MYSQL_RES *result;
 MYSQL_ROW row;
 MYSQL_FIELD *field;
 
 char* db_taskID;
-char* db_login;
+char* db_uid;
 char* db_filename;
 char* db_background;
 char* db_par1;
@@ -53,17 +53,17 @@ char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
 
-int split_input(const char* db_login, const char* db_filename) {
+int split_input(const char* db_uid, const char* db_filename) {
     char split[255];
 
-    log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
+    log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_uid, db_filename);
     // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "%s/%s/holograms/%s", source_path, db_login, db_filename);
+    sprintf(full_input_filename, "%s/%s/holograms/%s", source_path, db_uid, db_filename);
     log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
 
     // Формирование имени папки для нарезок
     //
-    // sprintf(buff, "%s/%s/holograms/%s", source_path, db_login, db_filename);
+    // sprintf(buff, "%s/%s/holograms/%s", source_path, db_uid, db_filename);
     strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);  //FIXME
 
     log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
@@ -89,7 +89,7 @@ int process_input(const char* input_filename, const char* db_filename) {
     //
     // Имя воркюнита
     sscanf(db_filename, "%[^.].%[^.]", basename, extension);
-    sprintf(output_filename, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, db_localID, timestamp, current_part, total_parts, extension);
+    sprintf(output_filename, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_uid, db_localID, timestamp, current_part, total_parts, extension);
     config.download_path(output_filename, full_output_filename);
 
     sprintf(full_input_filename, "%s/%s", input_dir_string, input_filename);
@@ -132,9 +132,9 @@ int process_background(char* filename) {
     sscanf(filename, "%[^.].%[^.]", basename, extension);
 
     // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/backgrounds/%s.%s", source_path, db_login, basename, extension);
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s.%s", source_path, db_uid, basename, extension);
     log_messages.printf(MSG_NORMAL, "From full background path: %s\n", full_input_filename);
-    sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_login, db_localID, timestamp, current_part, total_parts, extension);
+    sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_uid, db_localID, timestamp, current_part, total_parts, extension);
 
     config.download_path(outname, full_output_filename);
     log_messages.printf(MSG_NORMAL, "To full background path: %s\n", full_output_filename);
@@ -170,7 +170,7 @@ int process_config(const char* par1, const char* par2) {
     char path[255];
     char filename[255];
     // Имя конфига
-    sprintf(filename, "%s_%s_%s_config_%d_%d_%d.cfg", app.name, db_taskID, db_login, timestamp, current_part, total_parts);
+    sprintf(filename, "%s_%s_%s_config_%d_%d_%d.cfg", app.name, db_taskID, db_uid, timestamp, current_part, total_parts);
 
     // Путь до конфига
     config.download_path(filename, path);
@@ -248,8 +248,8 @@ int get_running_count() {
 
     char buff[255];
     sprintf(buff, "select count(taskID) from task where status=%d AND del<>1", PLANKTON_STATUS_IN_PROGRESS);
-    mysql_query(conn, buff);
-    result = mysql_store_result(conn);
+    mysql_query(frontend_db, buff);
+    result = mysql_store_result(frontend_db);
     row = mysql_fetch_row(result);
     log_messages.printf(MSG_NORMAL, "Tasks currently running: %s\n", row[0]);
     return atoi(row[0]);
@@ -282,8 +282,8 @@ int cancel_wu() {
     // char buff[255];
     // log_messages.printf(MSG_NORMAL, "Trying to find task where STATUS=3 or DEL=1...\n");
     // sprintf(buff, "select taskID from task where status=%d or del=1", PLANKTON_STATUS_PAUSED);
-    // mysql_query(conn, buff);
-    // result = mysql_store_result(conn);
+    // mysql_query(frontend_db, buff);
+    // result = mysql_store_result(frontend_db);
     // while ((row = mysql_fetch_row(result))) {
     //     c_task_id = row[0];
     //     // Ставится соответствие taskID и filename планктона воркюнитам из таблицы workunit
@@ -291,9 +291,9 @@ int cancel_wu() {
     //     // ВАЖНО: id ву и результатов могут не совпадать!
     //     // sprintf(buff, "update result set server_state=5, outcome=5 where server_state=2 and batch=%s", c_task_id); // SERVER STATE FIXME
     //     sprintf(buff, "update result set server_state=5, outcome=5 where batch=%s", c_task_id); // SERVER STATE FIXME
-    //     mysql_query(downlevel, buff);
+    //     mysql_query(backend_db, buff);
     //     sprintf(buff, "update workunit set error_mask=error_mask|16 where batch=%s", c_task_id);
-    //     mysql_query(downlevel, buff);
+    //     mysql_query(backend_db, buff);
     // }
     log_messages.printf(MSG_NORMAL, "Cleaning up paused/deleted tasks\n");
 
@@ -302,7 +302,7 @@ UPDATE plankton.result SET server_state=5, outcome=5  WHERE batch IN (SELECT bat
 UPDATE plankton.workunit SET error_mask=error_mask|16 WHERE batch IN (SELECT batch FROM plankton.batches);\
 DROP TABLE plankton.batches;";
 
-    mysql_query(downlevel, query);
+    mysql_query(backend_db, query);
 
     return 0;
 }
@@ -322,12 +322,12 @@ void main_loop() {
         if (running_tasks < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "SELECT taskID, login, hol_source, bg_source, par1, par2, localID FROM task inner join user ON uid=id WHERE status=%d AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", PLANKTON_STATUS_WAITING_QUEUE, MAX_TASKS-running_tasks);
-            mysql_query(conn, buff);
-            result = mysql_store_result(conn);
+            sprintf(buff, "SELECT taskID, uid, hol_source, bg_source, par1, par2, localID FROM task WHERE status=%d AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", PLANKTON_STATUS_WAITING_QUEUE, MAX_TASKS-running_tasks);
+            mysql_query(frontend_db, buff);
+            result = mysql_store_result(frontend_db);
             while ((row = mysql_fetch_row(result))) {
                 db_taskID       = row[0];
-                db_login        = row[1];
+                db_uid        = row[1];
                 db_filename     = row[2];
                 db_background   = row[3];
                 db_par1         = row[4];
@@ -337,12 +337,12 @@ void main_loop() {
                 if (task_is_empty(db_par1)) {
                     log_messages.printf(MSG_NORMAL, "Skipping empty taks %s\n", db_taskID);
                 } else {
-                    total_parts = split_input(db_login, db_filename);
+                    total_parts = split_input(db_uid, db_filename);
 
                     if (total_parts < 1) {
                         log_messages.printf(MSG_CRITICAL, "Total parts less than 1, pausing task\n");
                         sprintf(buff,"update status=%d where taskID=%i\n", PLANKTON_STATUS_PAUSED, atoi(db_taskID));
-                        mysql_query(conn, buff);
+                        mysql_query(frontend_db, buff);
                     } else {
                         log_messages.printf(MSG_NORMAL, "Total parts=%i\n", total_parts);
                         // Открыть папку для сканирования нарезок
@@ -385,7 +385,7 @@ void main_loop() {
                         log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
                         sprintf(buff, "UPDATE task SET status=%d, startDate=NOW() WHERE taskID=%s\n", PLANKTON_STATUS_IN_PROGRESS, db_taskID);
                         log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
-                        mysql_query(conn, buff);
+                        mysql_query(frontend_db, buff);
                     }
                 }
             }
@@ -450,25 +450,25 @@ int main(int argc, char** argv) {
     }
 
     // инициализация подключения к БД dims
-    conn = mysql_init(NULL);
-    if (conn == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+    frontend_db = mysql_init(NULL);
+    if (frontend_db == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(frontend_db), mysql_error(frontend_db));
         exit(1);
     }
     // подключение к БД dims
-    if (mysql_real_connect(conn, "127.0.0.1", "boincadm", "password!stronk!", "dihm1", 0, NULL, 0) == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error dihm1 %u: %s\n", mysql_errno(conn), mysql_error(conn));
+    if (mysql_real_connect(frontend_db, "127.0.0.1", "boincadm", "password!stronk!", "dihm1", 0, NULL, 0) == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error dihm1 %u: %s\n", mysql_errno(frontend_db), mysql_error(frontend_db));
         exit(1);
     }
     // инициализация подключения к БД нижнего уровня
-    downlevel = mysql_init(NULL);
-    if (downlevel == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
+    backend_db = mysql_init(NULL);
+    if (backend_db == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(backend_db), mysql_error(backend_db));
         exit(1);
     }
     // подключение к БД нижнего уровня
-    if (mysql_real_connect(downlevel, "127.0.0.1", "boincadm", "password!stronk!", "plankton", 0, NULL, CLIENT_MULTI_STATEMENTS) == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error plankton %u: %s\n", mysql_errno(downlevel), mysql_error(downlevel));
+    if (mysql_real_connect(backend_db, "127.0.0.1", "boincadm", "password!stronk!", "plankton", 0, NULL, CLIENT_MULTI_STATEMENTS) == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error plankton %u: %s\n", mysql_errno(backend_db), mysql_error(backend_db));
         exit(1);
     }
 

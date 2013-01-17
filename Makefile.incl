@@ -2,13 +2,15 @@ ARCH = 			$(shell arch)
 USER = 			$(shell whoami)
 
 CXX = 			g++
-CXXFLAGS = 		-pthread -Wall
+CXXFLAGS = 		-pthread -Wall -Wextra -zmuldefs
 
 DEPS_DIR = 		$(TOP_BUILD_DIR)/deps
 INCLUDES_DIR = 	$(DEPS_DIR)/headers
 LIBS_DIR = 		$(DEPS_DIR)/libs/$(ARCH)
 
 INCLUDES = 		-I $(INCLUDES_DIR) \
+				`mysql_config --cflags` \
+
 
 LIBS =			-L $(LIBS_DIR) \
 				-lplankton \
@@ -17,6 +19,8 @@ LIBS =			-L $(LIBS_DIR) \
 				-lboinc_api \
 				-lboinc \
 				-ltomcrypt \
+				`mysql_config --libs` \
+
 
 SERVER_PATH = boincadm@172.20.165.252
 

@@ -1,22 +1,12 @@
-#include <ctime>
+#include "plankton.h"
 
-#include "boinc_db.h"
-#include "parse.h"
-#include "error_numbers.h"
-#include "str_util.h"
 
-#include "sched_config.h"
-#include "sched_util.h"
-#include "sched_msgs.h"
-#include "assimilator_plankton.h"
-
-using std::vector;
 
 #define SLEEP_INTERVAL 1
 
-#include <my_global.h>
-#include <mysql.h>
-MYSQL *conn;
+// #include <my_global.h>
+// #include <mysql.h>
+MYSQL *frontend_db;
 MYSQL_RES *mysql_result;
 MYSQL_ROW row;
 char buff[255];
@@ -29,23 +19,23 @@ int g_argc;
 char** g_argv;
 
 int update_plankton(task_t& task, APP_VERSION& app_version) {     // FIXME
-    sprintf(buff, "select startDate from task where taskId=%d", task.id);  //tasks->task
-    mysql_query(conn, buff);
-    mysql_result = mysql_store_result(conn);
+    sprintf(buff, "select startDate from task where taskId=%d", task.id);
+    mysql_query(frontend_db, buff);
+    mysql_result = mysql_store_result(frontend_db);
     while ((row = mysql_fetch_row(mysql_result))) {
         rez = row[0];
     }
-    sprintf(buff, "UPDATE task SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, app_version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"   //tasks->task
-    mysql_query(conn, buff);
+    sprintf(buff, "UPDATE task SET status=0, calcID=1, calcTime=TIMEDIFF(CURTIME(), DATE_FORMAT('%s', '%s')), ver=%d WHERE taskID=%d\n", rez, frmt, app_version.version_num, task.id);//"UPDATE tasks SET status=0 WHERE taskID=%d\n"
+    mysql_query(frontend_db, buff);
     log_messages.printf(MSG_NORMAL, "Plankton updated\n");
     return 0;
 }
 
 int update_plankton_percent(vector<RESULT> result, task_t& task) {
-    log_messages.printf(MSG_NORMAL, "[%s_%s] %d/%d\n", task.login, task.name, (int)result.size(), task.size);
-    sprintf(buff, "UPDATE task SET percent=%d WHERE taskID=%d\n", (int)result.size() * 100 / task.size, task.id);   //tasks->task
-    log_messages.printf(MSG_NORMAL, "Percent update command: UPDATE task SET percent=%d WHERE taskID=%d\n", (int)result.size() * 100 / task.size, task.id); //tasks->task
-    mysql_query(conn, buff);
+    log_messages.printf(MSG_NORMAL, "[%d_%s] %d/%d\n", task.uid, task.name, (int)result.size(), task.size);
+    sprintf(buff, "UPDATE task SET percent=%d WHERE taskID=%d\n", (int)result.size() * 100 / task.size, task.id);
+    log_messages.printf(MSG_NORMAL, "Percent update command: UPDATE task SET percent=%d WHERE taskID=%d\n", (int)result.size() * 100 / task.size, task.id);
+    mysql_query(frontend_db, buff);
     return 0;
 }
 
@@ -71,12 +61,19 @@ int main_loop(APP& app) {
                 exit(0);
             }
         }
+
         // Заполнение полей текущего задания
-        sscanf(wu.name, "%[^_]_%d_%[^_]_%[^_]_%d_%*d_%d.%[^_]", task.app_name, &task.id, task.login, task.name, &task.timestamp, &task.size, task.extension);
+        sscanf(wu.name, "%[^_]_%d_%d_%[^_]_%d_%*d_%d.%[^_]", task.app_name, &task.id, &task.uid, task.name, &task.timestamp, &task.size, task.extension);
+        sprintf(buff, "SELECT login FROM dihm1.user WHERE id=%d", task.uid);
+        mysql_query(frontend_db, buf);
+        mysql_result = mysql_store_result(frontend_db);
+        row = mysql_fetch_row(mysql_result);
+        strcpy(task.login, row[0]);
+
         // Создание списка результатов задания
         vector<RESULT> results;
         if (strlen(task.name) > 0) {
-            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%s_%s_%%\" and workunit.assimilate_state=%d and workunit.error_mask<>16", task.id, task.login, task.name, ASSIMILATE_READY);
+            sprintf(buf, "INNER JOIN workunit ON result.id = workunit.canonical_resultid WHERE workunit.name like \"%%_%d_%d_%s_%%\" and workunit.assimilate_state=%d and workunit.error_mask<>16", task.id, task.uid, task.name, ASSIMILATE_READY);
             while (!result.enumerate(buf)) {
                 results.push_back(result);
             }
@@ -84,22 +81,22 @@ int main_loop(APP& app) {
 
         // Склеивание заданий
         if ((results.size() == task.size) && (task.size != 0)) {
-            log_messages.printf(MSG_NORMAL,"[%s_%s] Assimilating task\n", task.login, task.name);
+            log_messages.printf(MSG_NORMAL,"[%d_%s] Assimilating task\n", task.uid, task.name);
             retval = handle_result(task, results);
             if (retval) {
-                log_messages.printf(MSG_CRITICAL,"[%s_%s] Assimilation failed\n", task.login, task.name);
+                log_messages.printf(MSG_CRITICAL,"[%d_%s] Assimilation failed\n", task.uid, task.name);
             } else {
                 // Обновление записей в базе
                 if (update_db) {
                     sprintf(buf, "assimilate_state=%d, transition_time=%d", ASSIMILATE_DONE, (int)time(0));
-                    sprintf(buf2, "appid=%d and assimilate_state=%d and name like \"%%_%d_%s_%s_%%\"", app.id, ASSIMILATE_READY, task.id, task.login, task.name);
+                    sprintf(buf2, "appid=%d and assimilate_state=%d and name like \"%%_%d_%d_%s_%%\"", app.id, ASSIMILATE_READY, task.id, task.uid, task.name);
                     wu.update_fields_noid(buf, buf2);
                     boinc_db.commit_transaction();
                     // Обновление планктона
                     update_plankton(task, app_version);
                     update_plankton_percent(results, task);
                 }
-                log_messages.printf(MSG_NORMAL,"[%s_%s] Task assimilated\n", task.login, task.name);
+                log_messages.printf(MSG_NORMAL,"[%d_%s] Task assimilated\n", task.uid, task.name);
 
                 //Очистка всех структур
                 wu.clear();
@@ -117,14 +114,14 @@ int main_loop(APP& app) {
 
 int main(int argc, char** argv) {
     // Инициализация подключения к dims
-    conn = mysql_init(NULL);
-    if (conn == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+    frontend_db = mysql_init(NULL);
+    if (frontend_db == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(frontend_db), mysql_error(frontend_db));
         exit(1);
     }
     // Подключение к БД dims
-    if (mysql_real_connect(conn, "localhost", "boincadm", "password!stronk!", "dihm1", 0, NULL, 0) == NULL) {
-        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+    if (mysql_real_connect(frontend_db, "localhost", "boincadm", "password!stronk!", "dihm1", 0, NULL, 0) == NULL) {
+        log_messages.printf(MSG_CRITICAL, "Error %u: %s\n", mysql_errno(frontend_db), mysql_error(frontend_db));
         exit(1);
     }
 

@@ -1,9 +1,5 @@
-#include "backend_lib.h"
-#include "validate_util.h"
-#include "filesys.h"
-#include "assimilator_plankton.h"
-
 #include "plankton.h"
+// #include "assimilator_plankton.h"
 
 using std::string;
 
@@ -11,7 +7,7 @@ vector< vector<string> > result_file_names;
 
 int process_output(task_t task) {
     char output_filename[65535];
-    char preview_filename[65534];
+    // char preview_filename[65534];
     char command[65535];
     int retval;
 /*

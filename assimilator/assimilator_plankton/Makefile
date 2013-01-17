@@ -5,12 +5,10 @@ include $(TOP_BUILD_DIR)/Makefile.incl
 
 CXXFLAGS-EXTRA =
 
-INCLUDES-EXTRA = 	-I /usr/include/mysql/ \
+INCLUDES-EXTRA =
 
 LIBS-EXTRA = 		-lz \
 					-lssl \
-					-lmysqlclient \
-					`mysql_config --cflags --libs` \
 
 SOURCES = assimilator_plankton.cpp
 BINARIES = $(SOURCES:.cpp=)
