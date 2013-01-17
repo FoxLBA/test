@@ -43,6 +43,7 @@ MYSQL_FIELD *field;
 
 char* db_taskID;
 char* db_uid;
+char* db_login;
 char* db_filename;
 char* db_background;
 char* db_par1;
@@ -53,17 +54,17 @@ char infiles[INFILES_COUNT][255];
 DB_WORKUNIT wu;
 
 
-int split_input(const char* db_uid, const char* db_filename) {
+int split_input(const char* db_login, const char* db_filename) {
     char split[255];
 
-    log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_uid, db_filename);
+    log_messages.printf(MSG_NORMAL, "Found new file \"%s/%s\", processing...\n", db_login, db_filename);
     // Путь до ожидающего обработки файла
-    sprintf(full_input_filename, "%s/%s/holograms/%s", source_path, db_uid, db_filename);
+    sprintf(full_input_filename, "%s/%s/holograms/%s", source_path, db_login, db_filename);
     log_messages.printf(MSG_NORMAL, "Full path: %s\n", full_input_filename);
 
     // Формирование имени папки для нарезок
     //
-    // sprintf(buff, "%s/%s/holograms/%s", source_path, db_uid, db_filename);
+    // sprintf(buff, "%s/%s/holograms/%s", source_path, db_login, db_filename);
     strncpy(input_dir_string, full_input_filename, strlen(full_input_filename)-4);  //FIXME
 
     log_messages.printf(MSG_NORMAL, "full_input_filename: %s\n", full_input_filename);
@@ -132,7 +133,7 @@ int process_background(char* filename) {
     sscanf(filename, "%[^.].%[^.]", basename, extension);
 
     // Путь до бекграунда
-    sprintf(full_input_filename, "%s/%s/backgrounds/%s.%s", source_path, db_uid, basename, extension);
+    sprintf(full_input_filename, "%s/%s/backgrounds/%s.%s", source_path, db_login, basename, extension);
     log_messages.printf(MSG_NORMAL, "From full background path: %s\n", full_input_filename);
     sprintf(outname, "%s_%s_%s_%s_%d_%d_%d.%s", app.name, db_taskID, db_uid, db_localID, timestamp, current_part, total_parts, extension);
 
@@ -322,22 +323,23 @@ void main_loop() {
         if (running_tasks < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "SELECT taskID, uid, hol_source, bg_source, par1, par2, localID FROM task WHERE status=%d AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", PLANKTON_STATUS_WAITING_QUEUE, MAX_TASKS-running_tasks);
+            sprintf(buff, "SELECT taskID, uid, login, hol_source, bg_source, par1, par2, localID FROM task inner join user ON uid=id WHERE status=%d AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", PLANKTON_STATUS_WAITING_QUEUE, MAX_TASKS-running_tasks);
             mysql_query(frontend_db, buff);
             result = mysql_store_result(frontend_db);
             while ((row = mysql_fetch_row(result))) {
                 db_taskID       = row[0];
-                db_uid        = row[1];
-                db_filename     = row[2];
-                db_background   = row[3];
-                db_par1         = row[4];
-                db_par2         = row[5];
-                db_localID      = row[6];
+                db_uid          = row[1];
+                db_login        = row[2];
+                db_filename     = row[3];
+                db_background   = row[4];
+                db_par1         = row[5];
+                db_par2         = row[6];
+                db_localID      = row[7];
 
                 if (task_is_empty(db_par1)) {
                     log_messages.printf(MSG_NORMAL, "Skipping empty taks %s\n", db_taskID);
                 } else {
-                    total_parts = split_input(db_uid, db_filename);
+                    total_parts = split_input(db_login, db_filename);
 
                     if (total_parts < 1) {
                         log_messages.printf(MSG_CRITICAL, "Total parts less than 1, pausing task\n");
