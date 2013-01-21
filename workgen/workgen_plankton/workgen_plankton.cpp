@@ -122,7 +122,7 @@ int process_input(const char* input_filename, const char* db_filename) {
     return 0;
 }
 
-int process_background(char* filename) {
+int process_background(const char* filename) {
     log_messages.printf(MSG_NORMAL, "Processing background: %s\n", filename);
     char full_output_filename[255];
     char outname[255];
@@ -275,12 +275,14 @@ int task_is_empty(const char* par1) {
         token = strtok_r(NULL, "&", &saveptr);
         value = atof(token);
         if (value != 0) {
+            free(str);
             return 0;
         }
         token = strtok_r(NULL, "=", &saveptr);
     }
 
     // printf("skipping task\n");
+    free(str);
     return 1;
 }
 
@@ -302,13 +304,16 @@ int cancel_wu() {
     //     sprintf(buff, "update workunit set error_mask=error_mask|16 where batch=%s", c_task_id);
     //     mysql_query(backend_db, buff);
     // }
+
     log_messages.printf(MSG_NORMAL, "Cleaning up paused/deleted tasks\n");
-
-    char query[]="CREATE TEMPORARY TABLE plankton.batches AS (SELECT DISTINCT batch FROM plankton.workunit WHERE batch NOT IN (SELECT taskID FROM dihm1.task) OR batch IN (SELECT taskID FROM dihm1.task WHERE status=3 OR del=1));\
-UPDATE plankton.result SET server_state=5, outcome=5  WHERE batch IN (SELECT batch FROM plankton.batches);\
-UPDATE plankton.workunit SET error_mask=error_mask|16 WHERE batch IN (SELECT batch FROM plankton.batches);\
-DROP TABLE plankton.batches;";
-
+    char query[65535];
+    sprintf(query, "CREATE TEMPORARY TABLE plankton.batches AS (SELECT DISTINCT batch FROM plankton.workunit WHERE batch NOT IN (SELECT taskID FROM dihm1.task) OR batch IN (SELECT taskID FROM dihm1.task WHERE status=3 OR del=1));");
+    mysql_query(backend_db, query);
+    sprintf(query, "UPDATE plankton.result SET server_state=5, outcome=5  WHERE batch IN (SELECT batch FROM plankton.batches);");
+    mysql_query(backend_db, query);
+    sprintf(query, "UPDATE plankton.workunit SET error_mask=error_mask|16 WHERE batch IN (SELECT batch FROM plankton.batches);");
+    mysql_query(backend_db, query);
+    sprintf(query, "DROP TABLE plankton.batches;");
     mysql_query(backend_db, query);
 
     return 0;

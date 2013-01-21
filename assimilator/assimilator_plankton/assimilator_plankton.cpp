@@ -52,7 +52,7 @@ int main_loop(APP& app) {
     while(1) {
         check_stop_daemons();
 
-        sprintf(buf, "where appid=%d and assimilate_state=%d and error_mask<>16", app.id, ASSIMILATE_READY);
+        sprintf(buf, "WHERE appid=%d AND assimilate_state=%d AND error_mask<>16", app.id, ASSIMILATE_READY);
         // Заполнение полей текущего ворк юнита
         retval = wu.enumerate(buf);
         if (retval) {
@@ -64,11 +64,12 @@ int main_loop(APP& app) {
 
         // Заполнение полей текущего задания
         sscanf(wu.name, "%[^_]_%d_%d_%[^_]_%d_%*d_%d.%[^_]", task.app_name, &task.id, &task.uid, task.name, &task.timestamp, &task.size, task.extension);
-        sprintf(buff, "SELECT login FROM dihm1.user WHERE id=%d", task.uid);
+        sprintf(buf, "SELECT login FROM user WHERE id=%d", task.uid);
         mysql_query(frontend_db, buf);
         mysql_result = mysql_store_result(frontend_db);
-        row = mysql_fetch_row(mysql_result);
-        strcpy(task.login, row[0]);
+        if ((row = mysql_fetch_row(mysql_result)) != NULL) {
+            strcpy(task.login, row[0]);
+        }
 
         // Создание списка результатов задания
         vector<RESULT> results;
