@@ -19,6 +19,7 @@ using std::vector;
 
 const char* source_path="/mnt/boinc/source";
 const char* result_path="/mnt/boinc/results";
+const char* user_path="/mnt/boinc/user";
 
 struct task_t {
     char app_name[255];
@@ -44,3 +45,6 @@ extern int handle_result(task_t task, vector<RESULT> results);
 #define PLANKTON_STATUS_WAITING_TRANSFER        5
 #define PLANKTON_STATUS_RECORDING_ERROR         6
 #define PLANKTON_STATUS_RECORDING_IN_PROGRESS   7
+
+#define PLANKTON_PROCESSING_MODE_RECORD         0x00000001
+#define PLANKTON_PROCESSING_MODE_COMPUTE        0x00000002

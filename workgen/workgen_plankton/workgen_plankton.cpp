@@ -248,7 +248,7 @@ int make_job(char* db_taskID) {
 int get_running_count() {
 
     char buff[255];
-    sprintf(buff, "select count(taskID) from task where status=%d AND del<>1", PLANKTON_STATUS_IN_PROGRESS);
+    sprintf(buff, "SELECT count(taskID) FROM task WHERE status=%d AND del<>1", PLANKTON_STATUS_IN_PROGRESS);
     mysql_query(frontend_db, buff);
     result = mysql_store_result(frontend_db);
     row = mysql_fetch_row(result);
@@ -256,34 +256,41 @@ int get_running_count() {
     return atoi(row[0]);
 }
 
-int task_is_empty(const char* par1) {
+int task_is_empty(const char* taskID) {
 
-    char* str;
-    char* token;
-    char* saveptr;
-    double value;
+    // char* str;
+    // char* token;
+    // char* saveptr;
+    // double value;
 
-    str = (char*)malloc(strlen(par1) + 1);
-    if (str) {
-        strcpy(str, par1);
-    } else {
-        log_messages.printf(MSG_CRITICAL, "%s\n", "Unable to copy parameter string");
-    }
+    // str = (char*)malloc(strlen(par1) + 1);
+    // if (str) {
+    //     strcpy(str, par1);
+    // } else {
+    //     log_messages.printf(MSG_CRITICAL, "%s\n", "Unable to copy parameter string");
+    // }
 
-    token = strtok_r(str, "=", &saveptr);
-    while (token) {
-        token = strtok_r(NULL, "&", &saveptr);
-        value = atof(token);
-        if (value != 0) {
-            free(str);
-            return 0;
-        }
-        token = strtok_r(NULL, "=", &saveptr);
-    }
+    // token = strtok_r(str, "=", &saveptr);
+    // while (token) {
+    //     token = strtok_r(NULL, "&", &saveptr);
+    //     value = atof(token);
+    //     if (value != 0) {
+    //         free(str);
+    //         return 0;
+    //     }
+    //     token = strtok_r(NULL, "=", &saveptr);
+    // }
 
-    // printf("skipping task\n");
-    free(str);
-    return 1;
+    // // printf("skipping task\n");
+    // free(str);
+    // return 1;
+
+    char buff[255];
+    sprintf(buff, "SELECT processing_mode FORM task WHERE taskID=\'%s\'", taskID);
+    mysql_query(frontend_db, buff);
+    result = mysql_store_result(frontend_db);
+    row = mysql_fetch_row(result);
+    return atoi(row[0]) & PLANKTON_PROCESSING_MODE_COMPUTE;
 }
 
 int cancel_wu() {
@@ -347,7 +354,7 @@ void main_loop() {
                 db_par2         = row[6];
                 db_localID      = row[7];
 
-                if (task_is_empty(db_par1)) {
+                if (task_is_empty(db_taskID)) {
                     log_messages.printf(MSG_NORMAL, "Skipping empty taks %s\n", db_taskID);
                 } else {
                     total_parts = split_input(db_login, db_filename);
