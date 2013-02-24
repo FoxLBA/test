@@ -7,7 +7,7 @@ vector< vector<string> > result_file_names;
 
 int process_output(task_t task) {
     char output_filename[65535];
-    // char preview_filename[65534];
+    char preview_filename[65535];
     char command[65535];
     int retval;
 /*
@@ -29,13 +29,13 @@ int process_output(task_t task) {
     }
     log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
     retval=system(command);
-    // if (!retval) {
-    //     sprintf(preview_filename, "%s/res_%s.flv", config.project_path("tmp1/%s", task.login), task.name);
-    //     log_messages.printf(MSG_NORMAL, "preview_filename: %s\n", preview_filename);
-    //     sprintf(command, "ffmpeg.exe -b 200000 -i %s %s", output_filename, preview_filename);
-    // log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
-    // retval=system(command);
-    // };
+    if (!retval) {
+        sprintf(preview_filename, "%s/%s/res_%s.flv", user_path, task.login, task.name);
+        log_messages.printf(MSG_NORMAL, "preview_filename: %s\n", preview_filename);
+        sprintf(command, "ffmpeg.exe -b 200000 -i %s %s", output_filename, preview_filename);
+        log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
+        retval=system(command);
+    };
     return retval;
 }
 
