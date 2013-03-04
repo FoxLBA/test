@@ -32,7 +32,7 @@ int process_output(task_t task) {
     if (!retval) {
         sprintf(preview_filename, "%s/%s/res_%s.flv", user_path, task.login, task.name);
         log_messages.printf(MSG_NORMAL, "preview_filename: %s\n", preview_filename);
-        sprintf(command, "ffmpeg.exe -b 200000 -i %s %s", output_filename, preview_filename);
+        sprintf(command, "ffmpeg -b 200000 -i %s %s", output_filename, preview_filename);
         log_messages.printf(MSG_NORMAL, "FINAL COMMAND: %s\n", command);
         retval=system(command);
     };
