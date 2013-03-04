@@ -256,43 +256,6 @@ int get_running_count() {
     return atoi(row[0]);
 }
 
-int task_is_empty(const char* taskID) {
-
-    // char* str;
-    // char* token;
-    // char* saveptr;
-    // double value;
-
-    // str = (char*)malloc(strlen(par1) + 1);
-    // if (str) {
-    //     strcpy(str, par1);
-    // } else {
-    //     log_messages.printf(MSG_CRITICAL, "%s\n", "Unable to copy parameter string");
-    // }
-
-    // token = strtok_r(str, "=", &saveptr);
-    // while (token) {
-    //     token = strtok_r(NULL, "&", &saveptr);
-    //     value = atof(token);
-    //     if (value != 0) {
-    //         free(str);
-    //         return 0;
-    //     }
-    //     token = strtok_r(NULL, "=", &saveptr);
-    // }
-
-    // // printf("skipping task\n");
-    // free(str);
-    // return 1;
-
-    char buff[255];
-    sprintf(buff, "SELECT processing_mode FORM task WHERE taskID=\'%s\'", taskID);
-    mysql_query(frontend_db, buff);
-    result = mysql_store_result(frontend_db);
-    row = mysql_fetch_row(result);
-    return atoi(row[0]) & PLANKTON_PROCESSING_MODE_COMPUTE;
-}
-
 int cancel_wu() {
     // char* c_task_id;
     // char buff[255];
@@ -341,7 +304,7 @@ void main_loop() {
         if (running_tasks < MAX_TASKS) {  //FIXME
             log_messages.printf(MSG_NORMAL, "Scanning database for pending files...\n");
             //запрос на все ожидающие файлы
-            sprintf(buff, "SELECT taskID, uid, login, hol_source, bg_source, par1, par2, localID FROM task inner join user ON uid=id WHERE status=%d AND del <> '1' AND hol_source <> '' ORDER BY taskID LIMIT %d", PLANKTON_STATUS_WAITING_QUEUE, MAX_TASKS-running_tasks);
+            sprintf(buff, "SELECT taskID, uid, login, hol_source, bg_source, par1, par2, localID FROM task INNER JOIN user ON uid=id WHERE status=%d AND del <> '1' AND hol_source <> '' AND (processing_mode & 2)!=0 ORDER BY taskID LIMIT %d", PLANKTON_STATUS_WAITING_QUEUE, MAX_TASKS-running_tasks);
             mysql_query(frontend_db, buff);
             result = mysql_store_result(frontend_db);
             while ((row = mysql_fetch_row(result))) {
@@ -354,59 +317,55 @@ void main_loop() {
                 db_par2         = row[6];
                 db_localID      = row[7];
 
-                if (task_is_empty(db_taskID)) {
-                    log_messages.printf(MSG_NORMAL, "Skipping empty taks %s\n", db_taskID);
+                total_parts = split_input(db_login, db_filename);
+
+                if (total_parts < 1) {
+                    log_messages.printf(MSG_CRITICAL, "Total parts less than 1, pausing task\n");
+                    sprintf(buff,"update status=%d where taskID=%i\n", PLANKTON_STATUS_PAUSED, atoi(db_taskID));
+                    mysql_query(frontend_db, buff);
                 } else {
-                    total_parts = split_input(db_login, db_filename);
+                    log_messages.printf(MSG_NORMAL, "Total parts=%i\n", total_parts);
+                    // Открыть папку для сканирования нарезок
+                    DIRREF input_dir = dir_open(input_dir_string);
+                    vector<string> input_vector;
+                    log_messages.printf(MSG_NORMAL, "Scanning directory %s for files\n", input_dir_string);
+                    while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
+                        input_vector.push_back(input_filename);
+                    }
+                    sort(input_vector.begin(), input_vector.end());
 
-                    if (total_parts < 1) {
-                        log_messages.printf(MSG_CRITICAL, "Total parts less than 1, pausing task\n");
-                        sprintf(buff,"update status=%d where taskID=%i\n", PLANKTON_STATUS_PAUSED, atoi(db_taskID));
-                        mysql_query(frontend_db, buff);
-                    } else {
-                        log_messages.printf(MSG_NORMAL, "Total parts=%i\n", total_parts);
-                        // Открыть папку для сканирования нарезок
-                        DIRREF input_dir = dir_open(input_dir_string);
-                        vector<string> input_vector;
-                        log_messages.printf(MSG_NORMAL, "Scanning directory %s for files\n", input_dir_string);
-                        while (!(dir_scan(input_filename, input_dir, sizeof(input_filename)))) {
-                            input_vector.push_back(input_filename);
-                        }
-                        sort(input_vector.begin(), input_vector.end());
-
-                        timestamp = time(0);
-                        current_part = 0;
-                        for (unsigned int i = 0; i < input_vector.size(); i++) {
-                            current_part++;
-                            wu.clear();
-                            retval = process_input(input_vector[i].c_str(), db_filename);
-                            if (retval) { log_messages.printf(MSG_CRITICAL, "Can't process input: %d\n", retval); }
-                            retval = process_background(db_background);
-                            if (retval) {log_messages.printf(MSG_CRITICAL, "Can't process background: %d\n", retval); }
-                            retval = process_config(db_par1, db_par2);
-                            if (retval) { log_messages.printf(MSG_CRITICAL, "Can't process config: %d\n", retval); }
-                            retval = make_job(db_taskID);
-                            if (retval) {
-                                log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
-                                exit(1); // need new "invalid" status
-                            }
-                            memset(infiles, 0, sizeof(infiles));
-                        }
-
-                        retval = boinc_rmdir(input_dir_string);
+                    timestamp = time(0);
+                    current_part = 0;
+                    for (unsigned int i = 0; i < input_vector.size(); i++) {
+                        current_part++;
+                        wu.clear();
+                        retval = process_input(input_vector[i].c_str(), db_filename);
+                        if (retval) { log_messages.printf(MSG_CRITICAL, "Can't process input: %d\n", retval); }
+                        retval = process_background(db_background);
+                        if (retval) {log_messages.printf(MSG_CRITICAL, "Can't process background: %d\n", retval); }
+                        retval = process_config(db_par1, db_par2);
+                        if (retval) { log_messages.printf(MSG_CRITICAL, "Can't process config: %d\n", retval); }
+                        retval = make_job(db_taskID);
                         if (retval) {
-                            log_messages.printf(MSG_CRITICAL, "Can't remove directory %s: %d\n", input_dir_string, retval);
+                            log_messages.printf(MSG_CRITICAL, "Can't create job: %d\n", retval);
                             exit(1); // need new "invalid" status
                         }
-                        memset(input_dir_string, 0 , sizeof(input_dir_string));
-
-                        // Изменение статуса файла в БД планктон
-                        //
-                        log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
-                        sprintf(buff, "UPDATE task SET status=%d, startDate=NOW() WHERE taskID=%s\n", PLANKTON_STATUS_IN_PROGRESS, db_taskID);
-                        log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
-                        mysql_query(frontend_db, buff);
+                        memset(infiles, 0, sizeof(infiles));
                     }
+
+                    retval = boinc_rmdir(input_dir_string);
+                    if (retval) {
+                        log_messages.printf(MSG_CRITICAL, "Can't remove directory %s: %d\n", input_dir_string, retval);
+                        exit(1); // need new "invalid" status
+                    }
+                    memset(input_dir_string, 0 , sizeof(input_dir_string));
+
+                    // Изменение статуса файла в БД планктон
+                    //
+                    log_messages.printf(MSG_NORMAL, "row[0] (taskID): %s\n", db_taskID);
+                    sprintf(buff, "UPDATE task SET status=%d, startDate=NOW() WHERE taskID=%s\n", PLANKTON_STATUS_IN_PROGRESS, db_taskID);
+                    log_messages.printf(MSG_NORMAL, "buff for query (status update): %s", buff);
+                    mysql_query(frontend_db, buff);
                 }
             }
         }
